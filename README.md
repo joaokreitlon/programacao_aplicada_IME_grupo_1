@@ -1,2 +1,3 @@
-# programacao_aplicada_IME_template
-Template de exemplo das soluções dos projetos de engenharia da disciplina Programação Aplicada do Instituto Militar de Engenharia
+# programacao_aplicada_grupo_1
+
+Solução dos projetos de programação aplicada do grupo 01.

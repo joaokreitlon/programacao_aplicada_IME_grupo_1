@@ -8,7 +8,7 @@ qgisMinimumVersion=3.22
 description=Solução do Grupo 1
 version=0.11
 author=Grupo 1
-email=borba.philipe@ime.eb.br
+email=pedro.kovalczuk@ime.eb.br
 
 about=Soluções dos projetos de programação aplicada do grupo 1
 
