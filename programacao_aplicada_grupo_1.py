@@ -46,15 +46,20 @@ if cmd_folder not in sys.path:
 class ProgramacaoAplicadaGrupo1Plugin(object):
 
     def __init__(self):
+   # Inicialização da variável provider com valor nulo
         self.provider = None
 
     def initProcessing(self):
         """Init Processing provider for QGIS >= 3.8."""
+   # Criação de uma instância do provider ProgramacaoAplicadaGrupo1Provider
         self.provider = ProgramacaoAplicadaGrupo1Provider()
+   # Adição do provider ao registro de providers do Processing do QGIS
         QgsApplication.processingRegistry().addProvider(self.provider)
 
     def initGui(self):
+   # Chama o método initProcessing para registrar o provider no Processing do QGIS
         self.initProcessing()
 
     def unload(self):
+   # Remove o provider do registro de providers do Processing do QGIS
         QgsApplication.processingRegistry().removeProvider(self.provider)
