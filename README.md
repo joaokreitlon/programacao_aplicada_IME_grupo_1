@@ -32,6 +32,8 @@ import numpy as np
 
 ### Estrutura do Processing da solução
 
+Código utilizado: [link](https://github.com/joaokreitlon/programacao_aplicada_IME_grupo_1/blob/main/algorithms/Projeto1/solucao.py)
+
 #### Criação das camadas
 
 A partir de um ```python 
@@ -182,10 +184,54 @@ def coords_finder(coordenates:np.ndarray) -> np.ndarray:
             return np.array(output)
 
         return coords_finder
-
-
-
 ```
+
+Por fim, basta definir o  ```processAlgorithm```, chamando o ```.csv``` com os pontos de controle e os TIFFs dos MDS:
+
+```python
+
+    def processAlgorithm(self, parameters, context, feedback):
+
+        points_layer = self.parameterAsVectorLayer(parameters, self.INPUTPOINTS, context)
+        raster_layer = self.parameterAsRasterLayer(parameters, self.INPUTMDS, context)
+
+        coords_finder = self.create_coords_finder(raster_layer)
+        csv_file = '<diretorio>/pontos_controle.csv'
+
+        # data = np.loadtxt(csv_file, delimiter=',', skiprows=1)
+        points_array = self.points_layer_para_array(points_layer)
+        coords = coords_finder(points_array)
+
+        my_layer = self.create_point_layer(coords, 
+                                           points_layer.crs().authid())
+
+        QgsProject.instance().addMapLayer(my_layer)
+
+    def name(self):
+        
+        return 'Solução do Projeto 1'
+
+    def displayName(self):
+    
+        return self.tr(self.name())
+
+    def group(self):
+    
+        return self.tr(self.groupId())
+
+    def groupId(self):
+    
+        return 'Projeto 1'
+
+    def tr(self, string):
+        return QCoreApplication.translate('Processing', string)
+
+    def createInstance(self):
+        return Projeto1Solucao()
+```
+
+### Solução complementar:
+Código utilizado: [link](https://github.com/joaokreitlon/programacao_aplicada_IME_grupo_1/blob/main/algorithms/Projeto1/solucao_complementar.py)
 
 ### Criação do plugin
 
