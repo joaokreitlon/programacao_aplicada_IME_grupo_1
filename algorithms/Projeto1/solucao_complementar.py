@@ -134,7 +134,7 @@ class Projeto1SolucaoComplementar(QgsProcessingAlgorithm):
 
     def create_coords_finder(self, camada_raster:QgsRasterLayer):
         """
-         Essa função cria um objeto que nos permitirar calcular o erro para 
+         Essa função cria um objeto que nos permitirá calcular o erro para 
          cada ponto fornecido 
         """
         # Get the data provider of the layer
