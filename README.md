@@ -45,13 +45,7 @@ IMPUTMDS
     INPUTMDS = 'INPUTMDS'
 
     def initAlgorithm(self, config):
-        """
-        Here we define the inputs and output of the algorithm, along
-        with some other properties.
-        """
 
-        # We add the input vector features source. It can have any kind of
-        # geometry.
         self.addParameter(
             QgsProcessingParameterRasterLayer(
                 self.INPUTMDS,
@@ -70,21 +64,128 @@ IMPUTMDS
 
 ```
 
-
-
-
-
-
-
-A partir do ```.csv``` fornecido das coordenadas dos pontos de controle, pode-se gerar a camada temporária:
+Agora, vamos adicionar uma camada sink para armazenar as features processadas:
 
 ```python
 
+self.addParameter(
+            QgsProcessingParameterFeatureSink(
+                self.OUTPUT,
+                self.tr('Output layer')
+            )
+        )
 
 
 ```
 
-### Carregamento das camadas temporárias
+Posteriormente, vamos criar os pontos e inseri-los no mapa com tamanho proporcional
+
+```python
+
+
+def create_point_layer(self, points_data:np.ndarray, crs_str:str):
+
+        memoryLayer = QgsVectorLayer("Point?crs=" + crs_str,
+                                     "PontosControle",
+                                     "memory")
+
+        dp = memoryLayer.dataProvider()
+        dp.addAttributes([QgsField('error', QVariant.nameToType('double'))]) # the number 6 represents a double
+        memoryLayer.updateFields()
+
+        features = []
+        for x,y,err in points_data:
+            feat = QgsFeature()
+            feat.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(x,y)))
+            feat.setAttributes([abs(float(err))])
+            features.append(feat)
+        dp.addFeatures(features)
+        memoryLayer.updateExtents()
+
+
+        renderer = QgsGraduatedSymbolRenderer.createRenderer(vlayer=memoryLayer,
+                                                           attrName='error',
+                                                           classes=5,
+                                                           mode=1, 
+                                                           symbol=QgsSymbol.defaultSymbol(memoryLayer.geometryType()),
+                                                           ramp= QgsGradientColorRamp(QColor(255, 255, 255), QColor(255, 0, 0)))
+
+        renderer.setSymbolSizes(minSize=1.5, maxSize=5.5)
+        memoryLayer.setRenderer(renderer)
+        memoryLayer.triggerRepaint()
+        return memoryLayer
+
+```
+Transformando uma camada vetorial do MDS em um array:
+
+```python
+
+def points_layer_para_array(self, points_layer:QgsVectorLayer) -> np.ndarray:
+    
+        features = points_layer.getFeatures()
+
+        xy_attributes = []
+        for feature in features:
+            attrs = [feature.attribute(attr) for attr in points_layer.fields().names()]
+            xy_attributes.append(attrs)
+            
+        np_array = np.array(xy_attributes)
+
+        return np_array
+```
+
+### Cálculo do erro
+
+Ainda dentro do processing, é possível calcular o erro através de:
+
+
+```python
+
+def create_coords_finder(self, camada_raster:QgsRasterLayer):
+      
+        provider = camada_raster.dataProvider()
+        extent = camada_raster.extent()
+
+
+        m = camada_raster.width()
+        n = camada_raster.height()
+        x0, xf = extent.xMinimum(), extent.xMaximum()
+        y0, yf = extent.yMinimum(), extent.yMaximum()
+        xres, yres = (xf-x0)/m, (yf-x0)/n
+
+
+        block = provider.block(1, extent, n, m)
+        
+        npRaster = np.frombuffer(block.data(), dtype=np.float32).reshape(m, n)
+
+
+```
+
+Agora, vamos criar uma função que retorna os pontos próximos ao MDS, com uma coluna de erro:
+
+
+```python
+
+def coords_finder(coordenates:np.ndarray) -> np.ndarray:
+            """ Essa função retorna pontos que estejam junto do mds, com a ultima 
+            coluna sendo um atributo de erro """
+            output = []
+            for line in coordenates:
+                x,y,z = line
+
+                if x0 < x < xf and y0 < y < yf:
+                    i = int((x-x0)/xres)
+                    j = int((y-y0)/yres)
+                    output.append([x,y,z - npRaster[j,i]])
+                else:
+                    continue
+            return np.array(output)
+
+        return coords_finder
+
+
+
+```
 
 ### Criação do plugin
 
