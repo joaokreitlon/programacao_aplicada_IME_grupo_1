@@ -8,9 +8,9 @@ O trabalho proposto consiste na elaboração de um plugin para o QGIS, no qual s
 
 * **Projeto 1:** [Controle de Qualidade Altimétrico](https://github.com/joaokreitlon/programacao_aplicada_IME_grupo_1/edit/main/README.md#projeto-1-controle-de-qualidade-altim%C3%A9trico)
 
-  * [Solução do problema proposto](https://github.com/joaokreitlon/programacao_aplicada_IME_grupo_1/edit/main/README.md#estrutura-do-processing-da-solu%C3%A7%C3%A3o)
-  * [Solução complementar](https://github.com/joaokreitlon/programacao_aplicada_IME_grupo_1/edit/main/README.md#solu%C3%A7%C3%A3o-complementar)
-  * [Criação do plugin](https://github.com/joaokreitlon/programacao_aplicada_IME_grupo_1/edit/main/README.md#cria%C3%A7%C3%A3o-do-plugin)
+  * [Solução do problema proposto](#sol)
+  * [Solução complementar](#sol_complementar)
+  * [Criação do plugin](#plugin)
 
 ## Projeto 1: Controle de Qualidade Altimétrico
 
@@ -33,6 +33,8 @@ from qgis.core import (QgsFeature, QgsField, QgsGeometry, QgsGradientColorRamp, 
 
 import numpy as np
 ```
+
+<a name="sol"></a>
 
 ### Estrutura do Processing da solução
 
@@ -231,6 +233,7 @@ Por fim, basta definir o  ```processAlgorithm```, chamando o ```.csv``` com os p
     def createInstance(self):
         return Projeto1Solucao()
 ```
+<a name="sol_complementar"></a>
 
 ### Solução complementar:
 Código utilizado: [link](https://github.com/joaokreitlon/programacao_aplicada_IME_grupo_1/blob/main/algorithms/Projeto1/solucao_complementar.py)
@@ -431,7 +434,7 @@ Por fim, analogamente ao problema proposto, basta definir o  ```processAlgorithm
 
 ```
 
-
+<a name="plugin"></a>
 
 ### Criação do plugin
 
