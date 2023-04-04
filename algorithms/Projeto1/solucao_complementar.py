@@ -30,12 +30,15 @@ __copyright__ = '(C) 2023 by Grupo 1'
 
 __revision__ = '$Format:%H$'
 
-from qgis.PyQt.QtCore import QCoreApplication
-from qgis.core import (QgsProcessing,
-                       QgsFeatureSink,
+from qgis.PyQt.QtCore import QCoreApplication, QVariant
+from qgis.PyQt.QtGui import QColor
+from qgis.core import (QgsFeature, QgsField, QgsGeometry, QgsGradientColorRamp, QgsGraduatedSymbolRenderer, QgsPointXY, QgsProcessing,
+                       QgsFeatureSink,QgsProcessingParameterRasterLayer,
                        QgsProcessingAlgorithm,
                        QgsProcessingParameterFeatureSource,
-                       QgsProcessingParameterFeatureSink)
+                       QgsProcessingParameterFeatureSink, QgsProject, QgsRasterLayer, QgsSymbol, QgsVectorLayer)
+
+import numpy as np
 
 
 class Projeto1SolucaoComplementar(QgsProcessingAlgorithm):
@@ -57,7 +60,8 @@ class Projeto1SolucaoComplementar(QgsProcessingAlgorithm):
     # calling from the QGIS console.
 
     OUTPUT = 'OUTPUT'
-    INPUT = 'INPUT'
+    INPUTRASTER01 = 'INPUTRASTER01'
+    INPUTRASTER02 = 'INPUTRASTER02'
 
     def initAlgorithm(self, config):
         """
@@ -68,10 +72,18 @@ class Projeto1SolucaoComplementar(QgsProcessingAlgorithm):
         # We add the input vector features source. It can have any kind of
         # geometry.
         self.addParameter(
-            QgsProcessingParameterFeatureSource(
-                self.INPUT,
-                self.tr('Input layer'),
-                [QgsProcessing.TypeVectorAnyGeometry]
+            QgsProcessingParameterRasterLayer(
+                self.INPUTRASTER01,
+                self.tr('Camada Raster para o primeiro MDS'),
+                [QgsProcessing().TypeRaster]
+            )
+        )
+
+        self.addParameter(
+            QgsProcessingParameterRasterLayer(
+                self.INPUTRASTER02,
+                self.tr('Camada Raster para o segundo MDS'),
+                [QgsProcessing().TypeRaster]
             )
         )
 
@@ -85,6 +97,130 @@ class Projeto1SolucaoComplementar(QgsProcessingAlgorithm):
             )
         )
 
+    def create_point_layer(self, points_data:np.ndarray, crs_str:str):
+        # Agora, criar os pontos e colocalos no mapa
+        memoryLayer = QgsVectorLayer("Point?crs=" + crs_str,
+                                     "PontosControle",
+                                     "memory")
+
+        dp = memoryLayer.dataProvider()
+        dp.addAttributes([QgsField('error', QVariant.nameToType('double'))]) # the number 6 represents a double
+        memoryLayer.updateFields()
+
+        # Adicionar as feições de cada um dos pontos
+        features = []
+        for x,y,err in points_data:
+            feat = QgsFeature()
+            feat.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(x,y)))
+            feat.setAttributes([abs(float(err))])
+            features.append(feat)
+        dp.addFeatures(features)
+        memoryLayer.updateExtents()
+
+
+        renderer = QgsGraduatedSymbolRenderer.createRenderer(vlayer=memoryLayer,
+                                                           attrName='error',
+                                                           classes=5,
+                                                           mode=1, 
+                                                           symbol=QgsSymbol.defaultSymbol(memoryLayer.geometryType()),
+                                                           ramp= QgsGradientColorRamp(QColor(255, 255, 255), QColor(255, 0, 0)))
+
+        # set the size mode to proportional
+        renderer.setSymbolSizes(minSize=1.5, maxSize=5.5)
+        memoryLayer.setRenderer(renderer)
+        memoryLayer.triggerRepaint()
+        return memoryLayer
+
+
+    def create_coords_finder(self, camada_raster:QgsRasterLayer):
+        """
+         Essa função cria um objeto que nos permitirar calcular o erro para 
+         cada ponto fornecido 
+        """
+        # Get the data provider of the layer
+        provider = camada_raster.dataProvider()
+        extent = camada_raster.extent()
+
+        # Get the extent and size of the raster layer
+        m = camada_raster.width()
+        n = camada_raster.height()
+        x0, xf = extent.xMinimum(), extent.xMaximum()
+        y0, yf = extent.yMinimum(), extent.yMaximum()
+        xres, yres = (xf-x0)/m, (yf-x0)/n
+
+        # Read the raster data into a buffer
+        block = provider.block(1, extent, n, m)
+        # Convert the buffer to a NumPy array
+        npRaster = np.frombuffer(block.data(), dtype=np.float32).reshape(m, n)
+
+        def coords_finder(coordenates:np.ndarray) -> np.ndarray:
+            """ Essa função retorna pontos que estejam junto do mds, com a ultima 
+            coluna sendo um atributo de erro """
+            output = []
+            for line in coordenates:
+                x,y,z = line
+
+                if x0 < x < xf and y0 < y < yf:
+                    i = int((x-x0)/xres)
+                    j = int((y-y0)/yres)
+                    output.append([x,y,z - npRaster[j,i]])
+                else:
+                    continue
+            return np.array(output)
+
+        return coords_finder
+
+
+    def encontrar_intersercao(self, raster_layer01:QgsRasterLayer, raster_layer02:QgsRasterLayer):
+        # Encontrar os bounds para ambos os rasteres
+        # Get the data provider of the layer
+        # provider = raster_layer01.dataProvider()
+        extent = raster_layer01.extent()
+        # m = raster_layer01.height()
+        # n = raster_layer01.width()
+        x0, xf = extent.xMinimum(), extent.xMaximum()
+        y0, yf = extent.yMinimum(), extent.yMaximum()
+        # xres, yres = (xf-x0)/m, (yf-x0)/n
+        # block = provider.block(1, extent, n, m)
+        # npRaster = np.frombuffer(block.data(), dtype=np.float32).reshape(m, n)
+
+        # Get the extent and size of the raster layer
+        provider_2 = raster_layer02.dataProvider()
+        extent_2 = raster_layer02.extent()
+        m_2 = raster_layer02.height()
+        n_2 = raster_layer02.width()
+        x0_2, xf_2 = extent_2.xMinimum(), extent_2.xMaximum()
+        y0_2, yf_2 = extent_2.yMinimum(), extent_2.yMaximum()
+        xres_2, yres_2 = (xf_2-x0_2)/n_2, (yf_2-y0_2)/m_2
+        block_2 = provider_2.block(1, extent_2, n_2, m_2)
+        npRaster_2 = np.frombuffer(block_2.data(), dtype=np.float32).reshape(m_2, n_2)
+
+        # Achar a intersecao
+        x0_int = max(x0,x0_2)
+        y0_int = max(y0,y0_2)
+        xf_int = min(xf,xf_2)
+        yf_int = min(yf,yf_2)
+
+        if not (x0_int < xf_int and y0_int < yf_int):
+            return np.array([np.nan])
+        
+        # Selecionar os pontos do segundo raster que estao na intersecao
+        points_raster2 = []
+        for j in range(int((x0_int-x0_2)//abs(xres_2)),
+                       int((xf_int-x0_2)//abs(xres_2)),
+                       int(200/abs(xres_2))):
+            x_coord = x0_2 + j*xres_2
+            for i in range(int((yf_2-yf_int)//abs(yres_2)),
+                           int((yf_2-y0_2)//abs(yres_2)),
+                           int(200/abs(yres_2))):
+                y_coord = yf_2 - i*abs(yres_2)
+                points_raster2.append([x_coord, y_coord, npRaster_2[i,j]])
+        
+        # Gerar arquivo de erro para o primeiro raster
+        coords_finder = self.create_coords_finder(raster_layer01)
+        return coords_finder(np.array(points_raster2))
+
+
     def processAlgorithm(self, parameters, context, feedback):
         """
         Here is where the processing itself takes place.
@@ -93,34 +229,24 @@ class Projeto1SolucaoComplementar(QgsProcessingAlgorithm):
         # Retrieve the feature source and sink. The 'dest_id' variable is used
         # to uniquely identify the feature sink, and must be included in the
         # dictionary returned by the processAlgorithm function.
-        source = self.parameterAsSource(parameters, self.INPUT, context)
-        (sink, dest_id) = self.parameterAsSink(parameters, self.OUTPUT,
-                                               context, source.fields(), source.wkbType(), source.sourceCrs())
 
-        # Compute the number of steps to display within the progress bar and
-        # get features from source
-        total = 100.0 / source.featureCount() if source.featureCount() else 0
-        features = source.getFeatures()
+        raster_layer01 = self.parameterAsRasterLayer(parameters, 
+                                              self.INPUTRASTER01, 
+                                              context)
 
-        for current, feature in enumerate(features):
-            # Stop the algorithm if cancel button has been clicked
-            if feedback.isCanceled():
-                break
+        raster_layer02 = self.parameterAsRasterLayer(parameters, 
+                                              self.INPUTRASTER02, 
+                                              context)
 
-            # Add a feature in the sink
-            sink.addFeature(feature, QgsFeatureSink.FastInsert)
+        pontos_intercesao = self.encontrar_intersercao(raster_layer01, raster_layer02)
 
-            # Update the progress bar
-            feedback.setProgress(int(current * total))
+        # Agora, criar os pontos e colocalos no mapa
+        instance = QgsProject().instance()
+        crs_str = instance.crs().authid()
+        output_layer = self.create_point_layer(pontos_intercesao,crs_str)
+        instance.addMapLayer(output_layer)
 
-        # Return the results of the algorithm. In this case our only result is
-        # the feature sink which contains the processed features, but some
-        # algorithms may return multiple feature sinks, calculated numeric
-        # statistics, etc. These should all be included in the returned
-        # dictionary, with keys matching the feature corresponding parameter
-        # or output names.
-        return {self.OUTPUT: dest_id}
-
+        # return {self.OUTPUT: dest_id}
     def name(self):
         """
         Returns the algorithm name, used for identifying the algorithm. This
@@ -160,3 +286,4 @@ class Projeto1SolucaoComplementar(QgsProcessingAlgorithm):
 
     def createInstance(self):
         return Projeto1SolucaoComplementar()
+
