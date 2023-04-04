@@ -30,6 +30,7 @@ __copyright__ = '(C) 2023 by Grupo 1'
 
 __revision__ = '$Format:%H$'
 
+# Importando as bibliotecas necessárias
 from qgis.PyQt.QtCore import QCoreApplication, QVariant
 from qgis.PyQt.QtGui import QColor
 from qgis.core import (QgsFeature, QgsField, QgsGeometry, QgsGradientColorRamp, QgsGraduatedSymbolRenderer, QgsPointXY, QgsProcessing,
@@ -40,7 +41,7 @@ from qgis.core import (QgsFeature, QgsField, QgsGeometry, QgsGradientColorRamp, 
 
 import numpy as np
 
-
+# Definindo a classe Projeto1Solucao que herda da classe QgsProcessingAlgorithm
 class Projeto1Solucao(QgsProcessingAlgorithm):
     """
     This is an example algorithm that takes a vector layer and
@@ -62,15 +63,15 @@ class Projeto1Solucao(QgsProcessingAlgorithm):
     OUTPUT = 'OUTPUT'
     INPUTPOINTS = 'INPUTPOINTS'
     INPUTMDS = 'INPUTMDS'
-
+  # Função para inicializar o algoritmo
     def initAlgorithm(self, config):
         """
         Here we define the inputs and output of the algorithm, along
         with some other properties.
         """
 
-        # We add the input vector features source. It can have any kind of
-        # geometry.
+        # Adiciona a fonte de feições vetoriais de entrada. Pode ter qualquer tipo de
+        # geometria.
         self.addParameter(
             QgsProcessingParameterRasterLayer(
                 self.INPUTMDS,
@@ -87,24 +88,27 @@ class Projeto1Solucao(QgsProcessingAlgorithm):
             )
         )
 
-        # We add a feature sink in which to store our processed features (this
-        # usually takes the form of a newly created vector layer when the
-        # algorithm is run in QGIS).
+        # Adiciona um sink de feições em que armazenar nossas feições processadas (isso
+        # geralmente assume a forma de uma camada vetorial recém-criada quando o
+        # algoritmo é executado no QGIS).
         self.addParameter(
             QgsProcessingParameterFeatureSink(
                 self.OUTPUT,
                 self.tr('Output layer')
             )
         )
-
+   # Função para criar a camada de pontos
     def create_point_layer(self, points_data:np.ndarray, crs_str:str):
         # Agora, criar os pontos e colocalos no mapa
         memoryLayer = QgsVectorLayer("Point?crs=" + crs_str,
                                      "PontosControle",
                                      "memory")
-
+       
+   # Obtém o provedor de dados da camada
         dp = memoryLayer.dataProvider()
+   # Adiciona o atributo 'error' à camada
         dp.addAttributes([QgsField('error', QVariant.nameToType('double'))]) # the number 6 represents a double
+   # Atualiza os campos da camada
         memoryLayer.updateFields()
 
         # Adicionar as feições de cada um dos pontos
@@ -125,7 +129,7 @@ class Projeto1Solucao(QgsProcessingAlgorithm):
                                                            symbol=QgsSymbol.defaultSymbol(memoryLayer.geometryType()),
                                                            ramp= QgsGradientColorRamp(QColor(255, 255, 255), QColor(255, 0, 0)))
 
-        # set the size mode to proportional
+        # Definindo o modo de tamanho para proporcional
         renderer.setSymbolSizes(minSize=1.5, maxSize=5.5)
         memoryLayer.setRenderer(renderer)
         memoryLayer.triggerRepaint()
@@ -135,19 +139,19 @@ class Projeto1Solucao(QgsProcessingAlgorithm):
         """
         Pega uma camada vetorial do MDS e transforma ela em um numpy array
         """
-        # Get the features from the layer
+        # Obtenha as feições da camada
         features = points_layer.getFeatures()
 
-        # Get the XY coordinates and attributes from the features
+        # Obtenha as coordenadas XY e os atributos das feições
         xy_attributes = []
         for feature in features:
             attrs = [feature.attribute(attr) for attr in points_layer.fields().names()]
             xy_attributes.append(attrs)
 
-        # Convert the list of tuples to a numpy array
+        # Converter a lista de tuplas em um array numpy
         np_array = np.array(xy_attributes)
 
-        # Print the numpy array
+        # Imprimir a matriz numpy
         return np_array
 
     def create_coords_finder(self, camada_raster:QgsRasterLayer):
@@ -155,20 +159,20 @@ class Projeto1Solucao(QgsProcessingAlgorithm):
          Essa função cria um objeto que nos permitirar calcular o erro para 
          cada ponto fornecido 
         """
-        # Get the data provider of the layer
+        # Obtenha o provedor de dados da camada
         provider = camada_raster.dataProvider()
         extent = camada_raster.extent()
 
-        # Get the extent and size of the raster layer
+        # Obtenha a extensão e o tamanho da camada raster
         m = camada_raster.width()
         n = camada_raster.height()
         x0, xf = extent.xMinimum(), extent.xMaximum()
         y0, yf = extent.yMinimum(), extent.yMaximum()
         xres, yres = (xf-x0)/m, (yf-x0)/n
 
-        # Read the raster data into a buffer
+        # Leitura dos dados raster em um buffer
         block = provider.block(1, extent, n, m)
-        # Convert the buffer to a NumPy array
+        # Converte o buffer em uma matriz NumPy
         npRaster = np.frombuffer(block.data(), dtype=np.float32).reshape(m, n)
 
         def coords_finder(coordenates:np.ndarray) -> np.ndarray:
@@ -205,7 +209,7 @@ class Projeto1Solucao(QgsProcessingAlgorithm):
                                                    self.INPUTMDS, 
                                                    context)
 
-        # Compute the number of steps to display within the progress bar and
+        # Calcule o número de etapas a serem exibidas na barra de progresso
         coords_finder = self.create_coords_finder(raster_layer)
         csv_file = '/home/marcio/Documents/CartografiaSetimoSemestre/TrabalhosNoQGIS/Projeto01/Data/pontos_controle.csv'
 
