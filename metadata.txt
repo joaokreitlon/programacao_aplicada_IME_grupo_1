@@ -6,7 +6,7 @@
 name=ProgramacaoAplicadaGrupo1
 qgisMinimumVersion=3.22
 description=Solução do Grupo 1
-version=0.11
+version=0.1
 author=Grupo 1
 email=pedro.kovalczuk@ime.eb.br
 
