@@ -11,3 +11,22 @@ A orientação do trabalho se encontra no [link](https://drive.google.com/file/d
 
 ### Objetivos:
 Realizar a acurácia posicional absoluta altimétrica (EMQz e PEC) de 6 MDS gerados por uma empresa contratada pelo governo do Rio Grande do Sul. 
+
+### Cálculo da acurácia posicional:
+```python
+s = "Python syntax highlighting"
+print s
+# falta colocar o código aqui
+```
+
+### Criação das camadas dos pontos de controle
+
+A partir do ´´´.csv´´´ fornecido das coordenadas dos pontos de controle, pode-se gerar a camada temporária:
+
+```python
+s = "Python syntax highlighting"
+print s
+# falta colocar o código aqui
+```
+
+### Carregamento das camadas temporárias
