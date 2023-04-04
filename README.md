@@ -30,3 +30,30 @@ print s
 ```
 
 ### Carregamento das camadas temporárias
+
+### Criação do plugin
+
+O primeiro passo para a criação do plugin é instalar a extensão ```Plugin Builder 3``` no QGIS. A partir daí, é são preenchidos os campos:
+
+<img align="right" src="https://user-images.githubusercontent.com/99846391/229716623-ceaf920a-0bba-4159-b1b4-8e179b933a9d.png" width="500">
+
+
+```
+Class name: ProgramacaoAplicadaGrupo1 
+
+Plugin name: ProgramacaoAplicadaGrupo1
+
+Description: Solução do Grupo 1
+
+Module name: programacao_aplicada_grupo1
+
+Version number: 0.11
+
+Minimum QGIS version: 3.22
+
+Author / Company: Grupo 1
+
+Email: borba.philipe@ime.eb.br
+```
+
+Após preenchida a descrição do plugin, basta colocar o template como ```Preocessing Provider``` e posteriormente submeter o link do repositório no campo adequado.   
