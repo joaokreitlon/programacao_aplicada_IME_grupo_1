@@ -21,7 +21,7 @@ print s
 
 ### Criação das camadas dos pontos de controle
 
-A partir do ´´´.csv´´´ fornecido das coordenadas dos pontos de controle, pode-se gerar a camada temporária:
+A partir do ```.csv``` fornecido das coordenadas dos pontos de controle, pode-se gerar a camada temporária:
 
 ```python
 s = "Python syntax highlighting"
