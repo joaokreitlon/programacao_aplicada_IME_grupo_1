@@ -6,11 +6,14 @@ O trabalho proposto consiste na elaboração de um plugin para o QGIS, no qual s
 
 ## Projetos:
 
-* **Projeto 1:** [Controle de Qualidade Altimétrico](https://github.com/joaokreitlon/programacao_aplicada_IME_grupo_1/edit/main/README.md#projeto-1-controle-de-qualidade-altim%C3%A9trico)
+* **Projeto 1:** [Controle de Qualidade Altimétrico](#proj1)
 
   * [Solução do problema proposto](#sol)
   * [Solução complementar](#sol_complementar)
   * [Criação do plugin](#plugin)
+
+
+<a name="proj1"></a>
 
 ## Projeto 1: Controle de Qualidade Altimétrico
 
