@@ -16,21 +16,72 @@ A orientação do trabalho se encontra no [link](https://drive.google.com/file/d
 ### Objetivos:
 Realizar a acurácia posicional absoluta altimétrica (EMQz e PEC) de 6 MDS gerados por uma empresa contratada pelo governo do Rio Grande do Sul. 
 
-### Cálculo da acurácia posicional:
+### Bibliotecas necessárias para importação:
+
 ```python
-s = "Python syntax highlighting"
-print s
-# falta colocar o código aqui
+from qgis.PyQt.QtCore import QCoreApplication, QVariant
+from qgis.PyQt.QtGui import QColor
+from qgis.core import (QgsFeature, QgsField, QgsGeometry, QgsGradientColorRamp, QgsGraduatedSymbolRenderer, QgsPointXY, QgsProcessing,
+                       QgsFeatureSink,
+                       QgsProcessingAlgorithm, QgsProcessingOutputVectorLayer,
+                       QgsProcessingParameterFeatureSource,
+                       QgsProcessingParameterFeatureSink, QgsProcessingParameterRasterLayer, QgsProcessingParameterVectorLayer, QgsProject, QgsRasterLayer, QgsSymbol, QgsVectorLayer)
+
+import numpy as np
 ```
 
-### Criação das camadas dos pontos de controle
+### Estrutura do Processing da solução
+
+#### Criação das camadas
+
+A partir de um ```python 
+IMPUTMDS
+``` vetorial carregado no QGIS (no caso do exercício, os MDS) e um  ```IMPUTPOINTS``` (os pontos de controle), adicionamos essas feições como camadas: 
+
+```python
+
+    OUTPUT = 'OUTPUT'
+    INPUTPOINTS = 'INPUTPOINTS'
+    INPUTMDS = 'INPUTMDS'
+
+    def initAlgorithm(self, config):
+        """
+        Here we define the inputs and output of the algorithm, along
+        with some other properties.
+        """
+
+        # We add the input vector features source. It can have any kind of
+        # geometry.
+        self.addParameter(
+            QgsProcessingParameterRasterLayer(
+                self.INPUTMDS,
+                self.tr('Camada Raster para o MDS'),
+                [QgsProcessing.TypeRaster]
+            )
+        )
+
+        self.addParameter(
+            QgsProcessingParameterVectorLayer(
+                self.INPUTPOINTS,
+                self.tr('Camada Vetorial dos Pontos de Controle'),
+                [QgsProcessing.TypeVectorAnyGeometry]
+            )
+        )
+
+```
+
+
+
+
+
+
 
 A partir do ```.csv``` fornecido das coordenadas dos pontos de controle, pode-se gerar a camada temporária:
 
 ```python
-s = "Python syntax highlighting"
-print s
-# falta colocar o código aqui
+
+
+
 ```
 
 ### Carregamento das camadas temporárias
@@ -51,7 +102,7 @@ Description: Solução do Grupo 1
 
 Module name: programacao_aplicada_grupo1
 
-Version number: 0.11
+Version number: 0.1
 
 Minimum QGIS version: 3.22
 
