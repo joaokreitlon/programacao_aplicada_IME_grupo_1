@@ -8,6 +8,10 @@ O trabalho proposto consiste na elaboração de um plugin para o QGIS, no qual s
 
 * **Projeto 1:** [Controle de Qualidade Altimétrico](https://github.com/joaokreitlon/programacao_aplicada_IME_grupo_1/edit/main/README.md#projeto-1-controle-de-qualidade-altim%C3%A9trico)
 
+  * [Solução do problema proposto](https://github.com/joaokreitlon/programacao_aplicada_IME_grupo_1/edit/main/README.md#estrutura-do-processing-da-solu%C3%A7%C3%A3o)
+  * [Solução complementar](https://github.com/joaokreitlon/programacao_aplicada_IME_grupo_1/edit/main/README.md#solu%C3%A7%C3%A3o-complementar)
+  * [Criação do plugin](https://github.com/joaokreitlon/programacao_aplicada_IME_grupo_1/edit/main/README.md#cria%C3%A7%C3%A3o-do-plugin)
+
 ## Projeto 1: Controle de Qualidade Altimétrico
 
 ### Orientação:
@@ -36,9 +40,7 @@ Código utilizado: [link](https://github.com/joaokreitlon/programacao_aplicada_I
 
 #### Criação das camadas
 
-A partir de um ```python 
-IMPUTMDS
-``` vetorial carregado no QGIS (no caso do exercício, os MDS) e um  ```IMPUTPOINTS``` (os pontos de controle), adicionamos essas feições como camadas: 
+A partir de um ```IMPUTMDS``` vetorial carregado no QGIS (no caso do exercício, os MDS) e um  ```IMPUTPOINTS``` (os pontos de controle), adicionamos essas feições como camadas: 
 
 ```python
 
@@ -118,7 +120,7 @@ def create_point_layer(self, points_data:np.ndarray, crs_str:str):
         return memoryLayer
 
 ```
-Transformando uma camada vetorial do MDS em um array:
+#### Transformando uma camada vetorial do MDS em um array:
 
 ```python
 
@@ -136,7 +138,7 @@ def points_layer_para_array(self, points_layer:QgsVectorLayer) -> np.ndarray:
         return np_array
 ```
 
-### Cálculo do erro
+#### Cálculo do erro
 
 Ainda dentro do processing, é possível calcular o erro através de:
 
@@ -232,6 +234,204 @@ Por fim, basta definir o  ```processAlgorithm```, chamando o ```.csv``` com os p
 
 ### Solução complementar:
 Código utilizado: [link](https://github.com/joaokreitlon/programacao_aplicada_IME_grupo_1/blob/main/algorithms/Projeto1/solucao_complementar.py)
+
+#### Objetivos:
+Calcular o EMQZ entre os MDS adjacentes através da maior área sobreposta entre os TIFFs, de forma a criar uma malha 200m x 200m nos eixos x e y.
+Partindo das mesmas bibliotecas que na solução do problema proposto, basta agora criar o processing. Partindo de dois rasters como imputs:
+
+```python
+
+class Projeto1SolucaoComplementar(QgsProcessingAlgorithm):
+    
+    OUTPUT = 'OUTPUT'
+    INPUTRASTER01 = 'INPUTRASTER01'
+    INPUTRASTER02 = 'INPUTRASTER02'
+
+def initAlgorithm(self, config):
+
+        self.addParameter(
+            QgsProcessingParameterRasterLayer(
+                self.INPUTRASTER01,
+                self.tr('Camada Raster para o primeiro MDS'),
+                [QgsProcessing().TypeRaster]
+            )
+        )
+
+        self.addParameter(
+            QgsProcessingParameterRasterLayer(
+                self.INPUTRASTER02,
+                self.tr('Camada Raster para o segundo MDS'),
+                [QgsProcessing().TypeRaster]
+            )
+        )
+        
+        self.addParameter(
+            QgsProcessingParameterFeatureSink(
+                self.OUTPUT,
+                self.tr('Output layer')
+            )
+        )
+
+```
+Analogamente ao problema anterior, vamos adicionar os pontos ao mapa:
+
+```python
+
+def create_point_layer(self, points_data:np.ndarray, crs_str:str):
+
+        memoryLayer = QgsVectorLayer("Point?crs=" + crs_str,
+                                     "PontosControle",
+                                     "memory")
+
+        dp = memoryLayer.dataProvider()
+        dp.addAttributes([QgsField('error', QVariant.nameToType('double'))]) # the number 6 represents a double
+        memoryLayer.updateFields()
+
+        features = []
+        for x,y,err in points_data:
+            feat = QgsFeature()
+            feat.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(x,y)))
+            feat.setAttributes([abs(float(err))])
+            features.append(feat)
+        dp.addFeatures(features)
+        memoryLayer.updateExtents()
+
+        renderer = QgsGraduatedSymbolRenderer.createRenderer(vlayer=memoryLayer,
+                                                           attrName='error',
+                                                           classes=5,
+                                                           mode=1, 
+                                                           symbol=QgsSymbol.defaultSymbol(memoryLayer.geometryType()),
+                                                           ramp= QgsGradientColorRamp(QColor(255, 255, 255), QColor(255, 0, 0)))
+
+
+        renderer.setSymbolSizes(minSize=1.5, maxSize=5.5)
+        memoryLayer.setRenderer(renderer)
+        memoryLayer.triggerRepaint()
+        return memoryLayer
+```
+
+#### Calculando o erro por ponto fornecido
+
+```python
+
+def create_coords_finder(self, camada_raster:QgsRasterLayer):
+        
+        provider = camada_raster.dataProvider()
+        extent = camada_raster.extent()
+
+
+        m = camada_raster.width()
+        n = camada_raster.height()
+        x0, xf = extent.xMinimum(), extent.xMaximum()
+        y0, yf = extent.yMinimum(), extent.yMaximum()
+        xres, yres = (xf-x0)/m, (yf-x0)/n
+
+        block = provider.block(1, extent, n, m)
+        
+        npRaster = np.frombuffer(block.data(), dtype=np.float32).reshape(m, n)
+
+        def coords_finder(coordenates:np.ndarray) -> np.ndarray:
+            output = []
+            for line in coordenates:
+                x,y,z = line
+
+                if x0 < x < xf and y0 < y < yf:
+                    i = int((x-x0)/xres)
+                    j = int((y-y0)/yres)
+                    output.append([x,y,z - npRaster[j,i]])
+                else:
+                    continue
+            return np.array(output)
+
+        return coords_finder
+```
+
+#### Encontrando a interseção entre os rasters:
+
+```python
+
+def encontrar_intersercao(self, raster_layer01:QgsRasterLayer, raster_layer02:QgsRasterLayer):
+       
+        extent = raster_layer01.extent()       
+ 
+        x0, xf = extent.xMinimum(), extent.xMaximum()
+        y0, yf = extent.yMinimum(), extent.yMaximum()
+        
+        provider_2 = raster_layer02.dataProvider()
+        
+        extent_2 = raster_layer02.extent()
+        m_2 = raster_layer02.height()
+        n_2 = raster_layer02.width()
+        x0_2, xf_2 = extent_2.xMinimum(), extent_2.xMaximum()
+        y0_2, yf_2 = extent_2.yMinimum(), extent_2.yMaximum()
+        xres_2, yres_2 = (xf_2-x0_2)/n_2, (yf_2-y0_2)/m_2
+        block_2 = provider_2.block(1, extent_2, n_2, m_2)
+        npRaster_2 = np.frombuffer(block_2.data(), dtype=np.float32).reshape(m_2, n_2)
+
+        x0_int = max(x0,x0_2)
+        y0_int = max(y0,y0_2)
+        xf_int = min(xf,xf_2)
+        yf_int = min(yf,yf_2)
+
+        if not (x0_int < xf_int and y0_int < yf_int):
+            return np.array([np.nan])
+        
+        points_raster2 = []
+        for j in range(int((x0_int-x0_2)//abs(xres_2)),
+                       int((xf_int-x0_2)//abs(xres_2)),
+                       int(200/abs(xres_2))):
+            x_coord = x0_2 + j*xres_2
+            for i in range(int((yf_2-yf_int)//abs(yres_2)),
+                           int((yf_2-y0_2)//abs(yres_2)),
+                           int(200/abs(yres_2))):
+                y_coord = yf_2 - i*abs(yres_2)
+                points_raster2.append([x_coord, y_coord, npRaster_2[i,j]])
+        
+        coords_finder = self.create_coords_finder(raster_layer01)
+        return coords_finder(np.array(points_raster2))
+```
+
+Por fim, analogamente ao problema proposto, basta definir o  ```processAlgorithm```, chamando os dois rasters dos MDS:
+
+```python
+    
+    def processAlgorithm(self, parameters, context, feedback):
+        raster_layer01 = self.parameterAsRasterLayer(parameters, 
+                                              self.INPUTRASTER01, 
+                                              context)
+
+        raster_layer02 = self.parameterAsRasterLayer(parameters, 
+                                              self.INPUTRASTER02, 
+                                              context)
+
+        pontos_intercesao = self.encontrar_intersercao(raster_layer01, raster_layer02)
+        
+        instance = QgsProject().instance()
+        crs_str = instance.crs().authid()
+        output_layer = self.create_point_layer(pontos_intercesao,crs_str)
+        instance.addMapLayer(output_layer)
+        
+    def name(self):
+        return 'Solução Complementar do Projeto 1'
+
+    def displayName(self):
+        return self.tr(self.name())
+
+    def group(self):
+        return self.tr(self.groupId())
+
+    def groupId(self):
+        return 'Projeto 1'
+
+    def tr(self, string):
+        return QCoreApplication.translate('Processing', string)
+
+    def createInstance(self):
+        return Projeto1SolucaoComplementar()
+
+```
+
+
 
 ### Criação do plugin
 
