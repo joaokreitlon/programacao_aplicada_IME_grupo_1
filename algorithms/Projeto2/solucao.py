@@ -1,7 +1,7 @@
 # -- coding: utf-8 --
 
 """
-/*************************
+/************************
 programacao_aplicada_IME_grupo_1
                                  A QGIS plugin
  Solução do Grupo 1
