@@ -404,7 +404,173 @@ class Project_2(QgsProcessingAlgorithm):
 
         feedback.pushInfo(f"Cuidado! Existem {count_errors} drenagens que estão se encerrando em um vertedouro!")
 
+##########################################################################################################################################
+        
+        
+        # Algoritmo 4 - Drenagens que iniciam no oceano/baía/enseada
 
+        ## Procedimento:
+
+        ### 1 - Trechos de drenagem serão divididos em linhas
+        ### 2 - Criação de layer temporária 
+
+        Drain_lyr = processing.run("native:multiparttosingleparts", {
+            'INPUT': Drain_input,
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }, context=context, feedback=feedback)
+        Drain_lyr = Drain_lyr['OUTPUT']
+
+        #### Extração dos vértices iniciais:
+        
+        initial_points_lyr = processing.run("native:extractspecificvertices", {
+            'INPUT': Drain_lyr,
+            'VERTICES': 0,
+            'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+        }, context=context, feedback=feedback)
+        initial_points_lyr = initial_points_lyr['OUTPUT']
+
+        #### Armazenamento
+        invalid_intersec = processing.run(
+            "native:extractbylocation",
+            {
+                'INPUT': initial_points_lyr,
+                'INTERSECT': Wb_ocean,
+                'PREDICATE': 0, #Intersects
+                'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+            },
+            context=context,
+            feedback=feedback,
+        )
+        invalid_intersec = invalid_intersec['OUTPUT']
+
+        #### Armazenamento
+
+        flag_txt = 'Cuidado! Essa drenagem está se iniciando no oceano'
+
+        flag = lambda x: self.flagFeature(
+            x.geometry(),
+            flag_txt=flag_txt,
+            sink=self.pointFlagSink
+        )
+        list(map(flagLambda, invalid_intersec.getFeatures()))
+        teste_alg_4 = list(map(flag, invalid_intersec.getFeatures()))
+        
+##########################################################################################################################################
+        
+        
+        # Algoritmo 5 - Massa d’água com fluxo sem drenagem interna
+
+        count_errors = 0
+
+        for wb in Water_Body_input.getFeatures():
+            flow = wb.attributes()[9]
+            name = wb.attributes()[1]
+
+            if flow == True:
+                wb_geom = wb.geometry()
+                count = 0 
+
+                for l in Drain_input.getFeatures():
+                    l_geom = l.geometry()
+
+                    # Se não houver interseção, contabiliza-se erro:
+
+                    if l_geom.crosses(wb_geom): count +=1
+
+                if count == 0:
+                    feedback.pushInfo(f"A massa {name} não possui drenagem interna!")
+                    count_errors += 1
+                    
+
+        feedback.pushInfo(f" Cuidado! Existem {count_errors} massas d'água sem drenagem interna!")
+
+
+
+
+##########################################################################################################################################
+        
+        
+        # Algoritmo 6 - Massa d’água sem fluxo com drenagens internas
+
+        
+        invalid_intersec_wb = processing.run(
+            "native:extractbylocation",
+            {
+                'INPUT': Wb_no_flow,
+                'INTERSECT': Drain_lyr,
+                'PREDICATE': 1, 
+                'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+            },
+            context=context,
+            feedback=feedback,
+        )
+
+        invalid_intersec_wb = invalid_intersec_wb['OUTPUT']
+
+        flag_txt = ' Massas d\'água sem fluxo com drenagens internas'
+        flag = lambda x: self.flagFeature(
+            x.geometry(),
+            flag_txt=flag_txt,
+            sink=self.polygonFlagSink
+        )
+        list(map(flag, invalid_intersec_wb.getFeatures()))
+
+
+
+##########################################################################################################################################
+        
+        
+        # Algoritmo 7 - Objetos da classe canal linha sem drenagem coincidentes
+
+        invalid_ditch = processing.run(
+            "native:extractbylocation",
+            {
+                'INPUT': Ditch_input,
+                'INTERSECT': Drain_lyr,
+                'PREDICATE': 2, #Touches
+                'OUTPUT': QgsProcessing.TEMPORARY_OUTPUT
+            },
+            context=context,
+            feedback=feedback,
+        )
+
+        invalid_ditch = invalid_ditch['OUTPUT']
+
+        flagText = 'Objeto da classe Canal linha sem drenagem coincidente.'
+        flagLambda = lambda x: self.flagFeature(
+            x.geometry(),
+            flagText=flagText,
+            sink=self.lineFlagSink
+        )
+        list(map(flagLambda, invalid_ditch.getFeatures()))
+
+        
+
+##########################################################################################################################################
+        
+        
+        # Algoritmo 8 - Vertedouros e sumidouros devem estar relacionados com uma drenagem
+
+        count_errors = 0
+
+        for p in Sink_spill_input.getFeatures():
+            p_geom = p.geometry()
+            name = p.attributes()[1]
+            no_error = False
+
+            for line in Drain_input.getFeatures():
+                lineGeometry = line.geometry()
+                for part in lineGeometry.parts():
+                    vertices = list(part)
+                    for i in range(len(vertices)-1):
+                        point = QgsGeometry.fromPointXY(QgsPointXY(vertices[i].x(), vertices[i].y()))
+                        if p_geom.intersects(point): no_error = True
+
+            if no_error:
+                feedback.pushInfo(f"O sumidouro ou vertedouro {name} não está relacionado a nenhuma drenagem.")
+                count_errors += 1
+
+        feedback.pushInfo(f"Existem {count_errors} vertedouros ou sumidouros sem relacionamento com alguma drenagem!")
 
 ##########################################################################################################################################        
         
