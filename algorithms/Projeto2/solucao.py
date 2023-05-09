@@ -305,12 +305,28 @@ class Project_2(QgsProcessingAlgorithm):
             
             belonging = False
             for feature in Sink_spill_input.getFeatures():
-                ponto_sink = feature.geometry().asPoint()
+                geom = feature.geometry()
+                if geom.type() == QgsWkbTypes.PointGeometry:
+                    if geom.isMultipart():
+                        # Extract the first point from the MultiPoint geometry
+                        point = geom.asMultiPoint()[0]
+                    else:
+                        # The geometry is already a single point
+                        point = geom.asPoint()
+                else:
+                    raise ValueError("Only Point or MultiPoint geometries are permitted")
+
+                ponto_sink = point
                 if (ponto_sink.x(), ponto_sink.y()) == ponto:
                     belonging = True
                     break
             for feature in v_ditchs.getFeatures():
-                ponto_ditchs = feature.geometry().asPoint()
+                geom = feature.geometry()
+                if geom.type() == QgsWkbTypes.MultiPoint:
+                    point = geom.asMultiPoint()[0]
+                else:
+                    point = geom.asPoint()
+                ponto_ditchs = QgsPointXY(point)
                 if (ponto_ditchs.x(), ponto_ditchs.y()) == ponto:
                     belonging = True
                     break
@@ -343,7 +359,7 @@ class Project_2(QgsProcessingAlgorithm):
         flag_txt=flag_txt,
         sink=self.pointFlagSink
         )
-        teste_alg_1 = list(map(flagLambda, sharedKnots_lyr.getFeatures()))
+        list(map(flagLambda, sharedKnots_lyr.getFeatures()))
         
 ##########################################################################################################################################
         
@@ -539,7 +555,7 @@ class Project_2(QgsProcessingAlgorithm):
         flagText = 'Objeto da classe Canal linha sem drenagem coincidente.'
         flagLambda = lambda x: self.flagFeature(
             x.geometry(),
-            flagText=flagText,
+            flag_txt=flagText,
             sink=self.lineFlagSink
         )
         list(map(flagLambda, invalid_ditch.getFeatures()))
@@ -574,37 +590,6 @@ class Project_2(QgsProcessingAlgorithm):
 
 ##########################################################################################################################################        
         
-
-        # # Retrieve the feature source and sink. The 'dest_id' variable is used
-        # # to uniquely identify the feature sink, and must be included in the
-        # # dictionary returned by the processAlgorithm function.
-        # source = self.parameterAsSource(parameters, self.INPUT, context)
-        # (sink, dest_id) = self.parameterAsSink(parameters, self.OUTPUT,
-        #         context, source.fields(), source.wkbType(), source.sourceCrs())
-
-        # # Compute the number of steps to display within the progress bar and
-        # # get features from source
-        # total = 100.0 / source.featureCount() if source.featureCount() else 0
-        # features = source.getFeatures()
-
-        # for current, feature in enumerate(features):
-        #     # Stop the algorithm if cancel button has been clicked
-        #     if feedback.isCanceled():
-        #         break
-
-        #     # Add a feature in the sink
-        #     sink.addFeature(feature, QgsFeatureSink.FastInsert)
-
-        #     # Update the progress bar
-        #     feedback.setProgress(int(current * total))
-
-        # # Return the results of the algorithm. In this case our only result is
-        # # the feature sink which contains the processed features, but some
-        # # algorithms may return multiple feature sinks, calculated numeric
-        # # statistics, etc. These should all be included in the returned
-        # # dictionary, with keys matching the feature corresponding parameter
-        # # or output names.
-
         return {
             self.POINT_FLAGS: self.point_flag_id,
             self.LINE_FLAGS: self.line_flag_id,
