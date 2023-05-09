@@ -38,6 +38,12 @@ from qgis.core import (QgsProcessing,
                        QgsProcessingParameterFeatureSink)
 
 
+<<<<<<< Updated upstream
+=======
+# Definindo a classe Projeto1Solucao que herda da classe QgsProcessingAlgorithm
+
+
+>>>>>>> Stashed changes
 class Projeto1Solucao(QgsProcessingAlgorithm):
     """
     This is an example algorithm that takes a vector layer and
@@ -57,7 +63,13 @@ class Projeto1Solucao(QgsProcessingAlgorithm):
     # calling from the QGIS console.
 
     OUTPUT = 'OUTPUT'
+<<<<<<< Updated upstream
     INPUT = 'INPUT'
+=======
+    INPUTPOINTS = 'INPUTPOINTS'
+    INPUTMDS = 'INPUTMDS'
+  # Função para inicializar o algoritmo
+>>>>>>> Stashed changes
 
     def initAlgorithm(self, config):
         """
@@ -84,6 +96,106 @@ class Projeto1Solucao(QgsProcessingAlgorithm):
                 self.tr('Output layer')
             )
         )
+<<<<<<< Updated upstream
+=======
+   # Função para criar a camada de pontos
+
+    def create_point_layer(self, points_data: np.ndarray, crs_str: str):
+        # Agora, criar os pontos e colocalos no mapa
+        memoryLayer = QgsVectorLayer("Point?crs=" + crs_str,
+                                     "PontosControle",
+                                     "memory")
+
+   # Obtém o provedor de dados da camada
+        dp = memoryLayer.dataProvider()
+   # Adiciona o atributo 'error' à camada
+        # the number 6 represents a double
+        dp.addAttributes([QgsField('error', QVariant.nameToType('double'))])
+   # Atualiza os campos da camada
+        memoryLayer.updateFields()
+
+        # Adicionar as feições de cada um dos pontos
+        features = []
+        for x, y, err in points_data:
+            feat = QgsFeature()
+            feat.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(x, y)))
+            feat.setAttributes([abs(float(err))])
+            features.append(feat)
+        dp.addFeatures(features)
+        memoryLayer.updateExtents()
+
+        renderer = QgsGraduatedSymbolRenderer.createRenderer(vlayer=memoryLayer,
+                                                             attrName='error',
+                                                             classes=5,
+                                                             mode=1,
+                                                             symbol=QgsSymbol.defaultSymbol(
+                                                                 memoryLayer.geometryType()),
+                                                             ramp=QgsGradientColorRamp(QColor(255, 255, 255), QColor(255, 0, 0)))
+
+        # Definindo o modo de tamanho para proporcional
+        renderer.setSymbolSizes(minSize=1.5, maxSize=5.5)
+        memoryLayer.setRenderer(renderer)
+        memoryLayer.triggerRepaint()
+        return memoryLayer
+
+    def points_layer_para_array(self, points_layer: QgsVectorLayer) -> np.ndarray:
+        """
+        Pega uma camada vetorial do MDS e transforma ela em um numpy array
+        """
+        # Obtenha as feições da camada
+        features = points_layer.getFeatures()
+
+        # Obtenha as coordenadas XY e os atributos das feições
+        xy_attributes = []
+        for feature in features:
+            attrs = [feature.attribute(attr)
+                     for attr in points_layer.fields().names()]
+            xy_attributes.append(attrs)
+
+        # Converter a lista de tuplas em um array numpy
+        np_array = np.array(xy_attributes)
+
+        # Imprimir a matriz numpy
+        return np_array
+
+    def create_coords_finder(self, camada_raster: QgsRasterLayer):
+        """
+         Essa função cria um objeto que nos permitirar calcular o erro para 
+         cada ponto fornecido 
+        """
+        # Obtenha o provedor de dados da camada
+        provider = camada_raster.dataProvider()
+        extent = camada_raster.extent()
+
+        # Obtenha a extensão e o tamanho da camada raster
+        m = camada_raster.width()
+        n = camada_raster.height()
+        x0, xf = extent.xMinimum(), extent.xMaximum()
+        y0, yf = extent.yMinimum(), extent.yMaximum()
+        xres, yres = (xf-x0)/m, (yf-x0)/n
+
+        # Leitura dos dados raster em um buffer
+        block = provider.block(1, extent, n, m)
+        # Converte o buffer em uma matriz NumPy
+        npRaster = np.frombuffer(block.data(), dtype=np.float32).reshape(m, n)
+
+        def coords_finder(coordenates: np.ndarray) -> np.ndarray:
+            """ Essa função retorna pontos que estejam junto do mds, com a ultima 
+            coluna sendo um atributo de erro """
+            output = []
+            for line in coordenates:
+                x, y, z = line
+
+                if x0 < x < xf and y0 < y < yf:
+                    i = int((x-x0)/xres)
+                    j = int((y-y0)/yres)
+                    output.append([x, y, z - npRaster[j, i]])
+                else:
+                    continue
+            return np.array(output)
+
+        return coords_finder
+>>>>>>> Stashed changes
 
     def processAlgorithm(self, parameters, context, feedback):
         """
@@ -97,6 +209,7 @@ class Projeto1Solucao(QgsProcessingAlgorithm):
         (sink, dest_id) = self.parameterAsSink(parameters, self.OUTPUT,
                 context, source.fields(), source.wkbType(), source.sourceCrs())
 
+<<<<<<< Updated upstream
         # Compute the number of steps to display within the progress bar and
         # get features from source
         total = 100.0 / source.featureCount() if source.featureCount() else 0
@@ -106,6 +219,15 @@ class Projeto1Solucao(QgsProcessingAlgorithm):
             # Stop the algorithm if cancel button has been clicked
             if feedback.isCanceled():
                 break
+=======
+        points_layer = self.parameterAsVectorLayer(parameters,
+                                                   self.INPUTPOINTS,
+                                                   context)
+
+        raster_layer = self.parameterAsRasterLayer(parameters,
+                                                   self.INPUTMDS,
+                                                   context)
+>>>>>>> Stashed changes
 
             # Add a feature in the sink
             sink.addFeature(feature, QgsFeatureSink.FastInsert)
@@ -113,6 +235,7 @@ class Projeto1Solucao(QgsProcessingAlgorithm):
             # Update the progress bar
             feedback.setProgress(int(current * total))
 
+<<<<<<< Updated upstream
         # Return the results of the algorithm. In this case our only result is
         # the feature sink which contains the processed features, but some
         # algorithms may return multiple feature sinks, calculated numeric
@@ -120,6 +243,19 @@ class Projeto1Solucao(QgsProcessingAlgorithm):
         # dictionary, with keys matching the feature corresponding parameter
         # or output names.
         return {self.OUTPUT: dest_id}
+=======
+        my_layer = self.create_point_layer(coords,
+                                           points_layer.crs().authid())
+        # coords = coords_finder(data)
+        # (sink, dest_id) = self.parameterAsSink(parameters, self.OUTPUT,
+        # context,
+        # my_layer.fields(),
+        # my_layer.wkbType(),
+        # my_layer.sourceCrs())
+
+        QgsProject.instance().addMapLayer(my_layer)
+        # return {self.OUTPUT: dest_id}
+>>>>>>> Stashed changes
 
     def name(self):
         """
