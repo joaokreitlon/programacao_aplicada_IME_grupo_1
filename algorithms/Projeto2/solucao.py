@@ -305,12 +305,28 @@ class Project_2(QgsProcessingAlgorithm):
             
             belonging = False
             for feature in Sink_spill_input.getFeatures():
-                ponto_sink = feature.geometry().asPoint()
+                geom = feature.geometry()
+                if geom.type() == QgsWkbTypes.PointGeometry:
+                    if geom.isMultipart():
+                        # Extract the first point from the MultiPoint geometry
+                        point = geom.asMultiPoint()[0]
+                    else:
+                        # The geometry is already a single point
+                        point = geom.asPoint()
+                else:
+                    raise ValueError("Only Point or MultiPoint geometries are permitted")
+
+                ponto_sink = point
                 if (ponto_sink.x(), ponto_sink.y()) == ponto:
                     belonging = True
                     break
             for feature in v_ditchs.getFeatures():
-                ponto_ditchs = feature.geometry().asPoint()
+                geom = feature.geometry()
+                if geom.type() == QgsWkbTypes.MultiPoint:
+                    point = geom.asMultiPoint()[0]
+                else:
+                    point = geom.asPoint()
+                ponto_ditchs = QgsPointXY(point)
                 if (ponto_ditchs.x(), ponto_ditchs.y()) == ponto:
                     belonging = True
                     break
@@ -343,7 +359,7 @@ class Project_2(QgsProcessingAlgorithm):
         flag_txt=flag_txt,
         sink=self.pointFlagSink
         )
-        teste_alg_1 = list(map(flagLambda, sharedKnots_lyr.getFeatures()))
+        list(map(flagLambda, sharedKnots_lyr.getFeatures()))
         
 ##########################################################################################################################################
         
@@ -539,7 +555,7 @@ class Project_2(QgsProcessingAlgorithm):
         flagText = 'Objeto da classe Canal linha sem drenagem coincidente.'
         flagLambda = lambda x: self.flagFeature(
             x.geometry(),
-            flagText=flagText,
+            flag_txt=flagText,
             sink=self.lineFlagSink
         )
         list(map(flagLambda, invalid_ditch.getFeatures()))
