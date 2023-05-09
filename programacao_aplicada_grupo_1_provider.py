@@ -33,6 +33,8 @@ __revision__ = '$Format:%H$'
 from qgis.core import QgsProcessingProvider
 from .algorithms.Projeto1.solucao import Projeto1Solucao
 from .algorithms.Projeto1.solucao_complementar import Projeto1SolucaoComplementar
+from .algorithms.Projeto2.solucao import Project_2
+from .algorithms.Projeto2.solucao_complementar import Project_2_Complementary
 
 
 class ProgramacaoAplicadaGrupo1Provider(QgsProcessingProvider):
@@ -56,6 +58,8 @@ class ProgramacaoAplicadaGrupo1Provider(QgsProcessingProvider):
         """
         self.addAlgorithm(Projeto1Solucao())
         self.addAlgorithm(Projeto1SolucaoComplementar())
+        self.addAlgorithm(Project_2())
+        self.addAlgorithm(Project_2_Complementary())
 
         # add additional algorithms here
         # self.addAlgorithm(MyOtherAlgorithm())
