@@ -472,7 +472,6 @@ Após preenchida a descrição do plugin, basta colocar o template como ```Preoc
 
   * [Solução do problema proposto](#sol)
   * [Solução complementar](#sol_complementar)
-  * [Criação do plugin](#plugin)
 
 
 <a name="proj2"></a>
@@ -553,5 +552,42 @@ tipo da entrada de drenagens, mesmos
 atributos de entrada, acrescidos do
 atributo do tipo booleano
 dentro_de_poligono;
+
+* * **Projeto 3:** [Generalização Cartográfica](#proj3)
+
+  * [Solução do problema proposto](#sol)
+  * [Solução complementar](#sol_complementar)
+
+
+<a name="proj3"></a>
+
+## Projeto 3: Generalização Cartográfica
+
+### Orientação:
+A orientação do trabalho se encontra no [link](https://classroom.google.com/u/1/c/NTkxMTg3ODA0MjI2/a/NTUzNzcxMjY2Mzk3/details)
+
+### Objetivos:
+Desenvolver um processing que seja capaz de
+deslocar edificações de forma que a
+representação de rodovia não atrapalhe a
+visibilidade da representação de edificações.
+
+Os inputs são: camada de edificações,
+camada de rodovias , distância de
+deslocamento.
+
+Os deslocamentos das edificações devem
+respeitar a relação entre as edificações e as
+rodovias: as edificações que estão à direita da
+rodovia devem permanecer à direita, e as
+edificações que estão à esquerda das rodovias
+devem permanecer à esquerda.
+
+O output deve ser uma camada de geometria
+ponto no mesmo CRS da camada de entrada,
+com as edificações deslocadas.
+
+### Estrutura do Processing da solução
+Código utilizado: [link](https://github.com/joaokreitlon/programacao_aplicada_IME_grupo_1/blob/main/algorithms/Projeto3/solucao.py) 
 
 
