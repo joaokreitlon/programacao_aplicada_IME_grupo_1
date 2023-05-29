@@ -465,3 +465,93 @@ Email: borba.philipe@ime.eb.br
 ```
 
 Após preenchida a descrição do plugin, basta colocar o template como ```Preocessing Provider``` e posteriormente submeter o link do repositório no campo adequado.   
+
+
+
+* * **Projeto 2:** [Validação de Hidrografia](#proj2)
+
+  * [Solução do problema proposto](#sol)
+  * [Solução complementar](#sol_complementar)
+  * [Criação do plugin](#plugin)
+
+
+<a name="proj2"></a>
+
+## Projeto 2: Validação de Hidrografia
+
+### Orientação:
+A orientação do trabalho se encontra no [link](https://classroom.google.com/u/1/c/NTkxMTg3ODA0MjI2/a/NTUyODIxNjQ5MzM5/details)
+
+### Objetivos:
+Desenvolver um processing que identifica
+os seguintes erros de validação nos
+dados fornecidos:
+1. Drenagens com fluxo incorreto:
+
+• O fluxo das drenagens é dado
+pelo sentido de digitalização
+da geometria.
+• Para cada nó da rede, devem
+existir trechos entrando e
+saindo (coincidência de
+pontos de início e fim de
+drenagem).
+• Somente pontos de início ou
+de fim no meio da rede é erro
+(nós no meio da rede em que
+só chegam trechos ou só
+saem).
+
+2. Drenagens que iniciam em sumidouro;
+3. Drenagens que terminam em
+vertedouro;
+4. Drenagens que iniciam no oceano/
+baía/enseada;
+
+5. Massa d’água com
+fluxo sem drenagem
+interna;
+
+6. Massa d’água sem
+fluxo com drenagens
+internas;
+
+7. Objetos da classe canal
+linhas em drenagem
+coincidentes;
+
+8. Vertedouros e sumidouros
+devem estar relacionados
+com uma drenagem (não
+podem existir isoladamente);
+
+### Estrutura do Processing da solução
+Código utilizado: [link](https://github.com/joaokreitlon/programacao_aplicada_IME_grupo_1/blob/main/algorithms/Projeto2/solucao.py) 
+
+### Solução complementar:
+Código utilizado: [link](https://github.com/joaokreitlon/programacao_aplicada_IME_grupo_1/blob/main/algorithms/Projeto2/solucao_complementar.py)
+
+#### Objetivos:
+Na etapa de edição, é importante ressaltar
+quais drenagens estão dentro de massa
+d’água, pois existe uma forma particular de
+representar os rótulos destes elementos;
+
+• Sendo assim, é pedido que se desenvolva
+um processo que crie um atributo
+dentro_de_poligono do tipo booleano e
+que se calcule automaticamente o valor
+desse atributo para cada trecho de
+drenagem.
+
+• São parâmetros de entrada as drenagens
+e massas d’água como parâmetros de
+entrada;
+
+• A saída do algoritmo deve ter o mesmo
+tipo da entrada de drenagens, mesmos
+atributos de entrada, acrescidos do
+atributo do tipo booleano
+dentro_de_poligono;
+
+
