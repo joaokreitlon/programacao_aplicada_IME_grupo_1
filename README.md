@@ -13,6 +13,16 @@ O trabalho proposto consiste na elaboração de um plugin para o QGIS, no qual s
   * [Criação do plugin](#plugin)
 
 
+* **Projeto 2:** [Validação de Hidrografia](#proj2)
+  
+  * [Solução do problema proposto](#sol_2)
+  * [Solução complementar](#sol_complementar_2)
+
+* **Projeto 3:** [Generalização Cartográfica](#proj3)
+
+  * [Solução do problema proposto](#sol_3)
+  * [Solução complementar](#sol_complementar_3)
+
 <a name="proj1"></a>
 
 ## Projeto 1: Controle de Qualidade Altimétrico
@@ -467,13 +477,6 @@ Email: borba.philipe@ime.eb.br
 Após preenchida a descrição do plugin, basta colocar o template como ```Preocessing Provider``` e posteriormente submeter o link do repositório no campo adequado.   
 
 
-
-* * **Projeto 2:** [Validação de Hidrografia](#proj2)
-
-  * [Solução do problema proposto](#sol)
-  * [Solução complementar](#sol_complementar)
-
-
 <a name="proj2"></a>
 
 ## Projeto 2: Validação de Hidrografia
@@ -524,8 +527,12 @@ devem estar relacionados
 com uma drenagem (não
 podem existir isoladamente);
 
+<a name="sol_2"></a>
+
 ### Estrutura do Processing da solução
 Código utilizado: [link](https://github.com/joaokreitlon/programacao_aplicada_IME_grupo_1/blob/main/algorithms/Projeto2/solucao.py) 
+
+<a name="sol_complementar_2"></a>
 
 ### Solução complementar:
 Código utilizado: [link](https://github.com/joaokreitlon/programacao_aplicada_IME_grupo_1/blob/main/algorithms/Projeto2/solucao_complementar.py)
@@ -552,11 +559,6 @@ tipo da entrada de drenagens, mesmos
 atributos de entrada, acrescidos do
 atributo do tipo booleano
 dentro_de_poligono;
-
-* * **Projeto 3:** [Generalização Cartográfica](#proj3)
-
-  * [Solução do problema proposto](#sol)
-  * [Solução complementar](#sol_complementar)
 
 
 <a name="proj3"></a>
@@ -587,7 +589,11 @@ O output deve ser uma camada de geometria
 ponto no mesmo CRS da camada de entrada,
 com as edificações deslocadas.
 
+<a name="sol_3"></a>
+
 ### Estrutura do Processing da solução
 Código utilizado: [link](https://github.com/joaokreitlon/programacao_aplicada_IME_grupo_1/blob/main/algorithms/Projeto3/solucao.py) 
 
 
+<a name="sol_complementar_3"></a>
+### Solução Complementar
