@@ -588,8 +588,6 @@ class Project_2(QgsProcessingAlgorithm):
 
         feedback.pushInfo(f"Existem {count_errors} vertedouros ou sumidouros sem relacionamento com alguma drenagem!")
 
-##########################################################################################################################################        
-        
         return {
             self.POINT_FLAGS: self.point_flag_id,
             self.LINE_FLAGS: self.line_flag_id,

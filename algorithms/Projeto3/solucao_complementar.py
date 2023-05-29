@@ -57,7 +57,7 @@ _copyright_ = '(C) 2023 by Grupo 1'
 _revision_ = '$Format:%H$'
 
 
-class Projeto3Solucao(QgsProcessingAlgorithm):
+class Projeto3SolucaoComplementar(QgsProcessingAlgorithm):
 
     INPUT_BUILDINGS = 'INPUT_BUILDINGS'
     INPUT_ROADS = 'INPUT_ROADS'
@@ -125,7 +125,7 @@ class Projeto3Solucao(QgsProcessingAlgorithm):
             points = []
             for part in geom.asMultiPoint():
                 coord = Point(part.x(), part.y())   
-                dx, dy = estradas_parametrizadas.calcular_empurrao(coord, 25.0)
+                dx, dy = estradas_parametrizadas.calcular_empurrao(coord, 50.0)
                 points.append(QgsPointXY(coord.x + dx,coord.y + dy))
             # Gerar a nova geometria 
             new_geom = QgsGeometry.fromMultiPointXY(points)
@@ -142,7 +142,7 @@ class Projeto3Solucao(QgsProcessingAlgorithm):
         QgsProject.instance().addMapLayer(output_lyr)
 
     def name(self):
-        return 'Solução do Projeto 3'
+        return 'Solução Complementar do Projeto 3'
 
     def displayName(self):
         return self.tr(self.name())
@@ -157,7 +157,7 @@ class Projeto3Solucao(QgsProcessingAlgorithm):
         return QCoreApplication.translate('Processing', string)
 
     def createInstance(self):
-        return Projeto3Solucao()
+        return Projeto3SolucaoComplementar()
 
 ###############################################################################
 ######################## DEFINIÇÃO DA CLASSE ESTRADAS #########################
@@ -216,12 +216,10 @@ class Estrada():
         index_trecho = 0
 
         # Encontrar a estrada que esta mais proxima
-        for i, (u,v,(xref,yref),modulo) in enumerate(self.segments_params):
+        for i, (_,v,(xref,yref),_) in enumerate(self.segments_params):
             vx,vy = v
-            ux,uy = u
             dist = abs(vx*(x-xref) + vy*(y-yref))
-            proj_u = ux*(x-xref) + uy*(y-yref)
-            if (distancia_edific_estrada > dist) and (0 < proj_u < modulo):
+            if distancia_edific_estrada > dist:
                 distancia_edific_estrada = dist
                 index_trecho = i
 
