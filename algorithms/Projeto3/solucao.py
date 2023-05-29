@@ -30,7 +30,7 @@ from qgis.core import (QgsProcessing,
                        QgsProcessingParameterFeatureSource,
                        QgsProcessingParameterMultipleLayers,
                        QgsProcessingParameterFeatureSink,
-                       QgsProcessingParameterNumber,
+                       QgsProcessingParameterNumber, QgsProcessingParameterVectorLayer,
                        QgsProject,
                        QgsField,
                        QgsFeatureSink,
@@ -67,14 +67,14 @@ class Projeto3Solucao(QgsProcessingAlgorithm):
     def initAlgorithm(self, config=None):
 
         # Inputs
-
         # Buildings - they will be the focus of cartographic generalization (External iteration).
-        self.addParameter(QgsProcessingParameterFeatureSource(self.INPUT_BUILDINGS,
-                                                              'BUILDINGS', [QgsProcessing.TypeVectorPoint], defaultValue=None))
+        self.addParameter(QgsProcessingParameterVectorLayer(self.INPUT_BUILDINGS,
+                                                              'BUILDINGS', defaultValue=None))
 
         # Roads - they will be used to verify if a building is left or right of a road and to move the building according to geometries and styles.
-        self.addParameter(QgsProcessingParameterFeatureSource(self.INPUT_ROADS,
-                                                              'ROADS', [QgsProcessing.TypeVectorLine], defaultValue=None))
+        
+        self.addParameter(QgsProcessingParameterVectorLayer(self.INPUT_ROADS,
+                                                              'ROADS', defaultValue=None))
 
         # Displacement distance - it will be used to create the space between buildings and between a single build and the road.
         self.addParameter(QgsProcessingParameterNumber(self.DISPLACEMENT_DISTANCE,
@@ -88,13 +88,57 @@ class Projeto3Solucao(QgsProcessingAlgorithm):
 
     def processAlgorithm(self, parameters, context, feedback):
 
-        # Multiline source
-        src_ml = self.parameterAsSource(
-            parameters, self.INPUT_MULTILINE, context)
+        # Camada de estradas
+        estradas_lyr = self.parameterAsVectorLayer(
+                parameters, self.INPUT_ROADS, context)
 
-        # Polygon source
-        src_poly = self.parameterAsSource(
-            parameters, self.INPUT_POLYGON, context)
+        # Camada de pontos
+        edificacoes_lyr = self.parameterAsVectorLayer(
+                parameters, self.INPUT_BUILDINGS, context)
+
+        # Capturar a posicao de cada edificação em uma lista e calcular sua dimensão
+        coordenadas_edificacoes = coletar_pontos(edificacoes_lyr)
+        # Criar a classe de estrada a partir da camada estrada
+        estradas_parametrizadas = Estrada(estradas_lyr)
+
+        # Encontrar o empurrão para cada edificação na estrada e somar ele ao pontor original
+        for (i, coord) in enumerate(coordenadas_edificacoes):
+            dx, dy = estradas_parametrizadas.calcular_empurrao(coord, 100.0)
+            x, y = coord
+            coordenadas_edificacoes[i] = Point(x+dx,y+dy)
+
+        # Criar uma nova camada com esses pontos 
+        output_lyr = edificacoes_lyr.clone()
+        dp = output_lyr.dataProvider()
+
+        # Aplicar a translacao e rotacao para cada feature
+        for (feature, novas_coordenadas) in zip(dp.getFeatures(), coordenadas_edificacoes):
+            geom = feature.geometry()
+            # Coletar cada ponto e gerar um deslocado
+            points = []
+            for _ in geom.asMultiPoint():
+                x,y = novas_coordenadas
+                points.append(QgsPointXY(x+1000.0,y+1000.0))
+            # Gerar a nova geometria 
+            new_geom = QgsGeometry.fromMultiPointXY(points)
+            feature.setGeometry(new_geom)
+            dp.deleteFeatures([feature.id()])
+            dp.addFeature(feature)
+        dp.updateExtents()
+
+        # fields = [field for field in estradas_lyr.fields()]
+        # dp.addAttributes(fields)
+        # output_lyr.updateFields()
+        # novos_pontos = gerar_diamantes(top_layer)
+        # dp.addFeatures(novos_pontos)
+        # output_lyr.updateExtents()
+        # output_lyr.setRenderer(renderer)
+        # output_lyr.triggerRepaint()
+        # QgsProject.instance().addMapLayer(output_lyr)
+
+
+        # Retornar essa camada
+        QgsProject.instance().addMapLayer(output_lyr)
 
     def name(self):
         return 'Solução do Projeto 3'
@@ -113,3 +157,85 @@ class Projeto3Solucao(QgsProcessingAlgorithm):
 
     def createInstance(self):
         return Projeto3Solucao()
+
+###############################################################################
+######################## DEFINIÇÃO DA CLASSE ESTRADAS #########################
+###############################################################################
+from collections import namedtuple
+from numpy import sqrt
+
+LineSegment = namedtuple("LineSegment",["beg","end"])
+SegmentParameters = namedtuple("SegParams",["u","v","pref","lenght"])
+Point = namedtuple("Point", ["x","y"])
+
+def coletar_pontos(layer):
+    """
+    Coletar as coordenadas dos pontos com as características da camada de 
+    edificação.
+    """
+    coordenates = []
+    for feature in layer.getFeatures():
+        geom = feature.geometry()
+        for part in geom.asMultiPoint():
+            coordenates.append(Point(part.x(), part.y()))
+    return coordenates
+
+
+class Estrada():
+    def __init__(self, layer) -> None:
+        self.segments_params = self.parametrizar_segmentos(layer)
+
+    def parametrizar_segmentos(self,layer:QgsVectorLayer):
+        # Assumindo que pegamos uma do tipo
+        line_segments = []
+        for feature in layer.getFeatures():
+            geom = feature.geometry()
+            if geom.isMultipart():
+                points_list = geom.asMultiPolyline()[0]
+                for part in zip(points_list[:-1], points_list[1:]):
+                    p0, pf = part
+                    x0,y0,xf,yf = p0.x(),p0.y(), pf.x(),pf.y()
+
+                    # Definir o ponto de referência
+                    pr = Point((x0+xf)/2, (y0+yf)/2)
+
+                    # Calcular os vetores perpendiculares
+                    xdif = xf - x0
+                    ydif = yf - y0
+                    length = sqrt(xdif**2 + ydif**2)
+                    u = Point(xdif/length, ydif/length)
+                    v = Point(ydif/length, -xdif/length)
+                    line_segments.append(SegmentParameters(u,v,pr,length))
+        return line_segments
+
+
+    def calcular_empurrao(self,p:Point, distancia_minima:float):
+        x,y = p
+        distancia_edific_estrada = 10000.0
+        index_trecho = 0
+
+        # Encontrar a estrada que esta mais proxima
+        for i, (u,_,(xref,yref),_) in enumerate(self.segments_params):
+            ux,uy = u
+            xmin = xref + ux*(ux*(x-xref) + uy*(y-yref))
+            ymin = yref + uy*(ux*(x-xref) + uy*(y-yref))
+            dist = sqrt((x-xmin)**2 + (y-ymin)**2)
+            if distancia_edific_estrada > dist:
+                distancia_edific_estrada = dist
+                index_trecho = i
+
+        # Verificar se precisa realizar o empurrão
+        if distancia_minima < distancia_edific_estrada:
+            return (0.0,0.0)
+        else:
+            (vx,vy) = self.segments_params[index_trecho].v
+            (xref,yref) = self.segments_params[index_trecho].pref
+            (x,y) = p 
+            diferenca_distancia = abs(distancia_minima - distancia_edific_estrada)
+
+            # Definir a direção do empurrão
+            if (vx*(x-xref) + vy*(y-yref)) > 0:
+                return (vx*diferenca_distancia, vy*diferenca_distancia)
+            else:
+                return (-vx*diferenca_distancia, -vy*diferenca_distancia)
+
