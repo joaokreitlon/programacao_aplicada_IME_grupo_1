@@ -308,8 +308,14 @@ class Estrada():
             ux,uy = u
             dist_proj = abs(vx*(x-xref) + vy*(y-yref))
             proj_u = ux*(x-xref) + uy*(y-yref)
+            dist_bordas = min(sqrt((x-xref)**2 + (y-yref)**2),
+                              sqrt((x-(xref+ux*modulo))**2 + (y-(yref+uy*modulo))**2))
             if (distancia_edific_estrada > dist_proj) and (0 < proj_u < modulo):
                 distancia_edific_estrada = dist_proj
+                index_trecho = i
+
+            elif (distancia_edific_estrada > dist_bordas):
+                distancia_edific_estrada = dist_bordas
                 index_trecho = i
 
         # Verificar se precisa realizar o empurrão
