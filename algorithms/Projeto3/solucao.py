@@ -82,7 +82,7 @@ class Projeto3Solucao(QgsProcessingAlgorithm):
                                                        type=QgsProcessingParameterNumber.Double,
                                                        defaultValue=50.0))
 
-        # Output - Generalized layer with buildings displaced and rotated.
+        # # Output - Generalized layer with buildings displaced and rotated.
         self.addParameter(QgsProcessingParameterFeatureSink(self.OUTPUT,
                                                             'GENERALIZED_BUILDINGS'))
 
@@ -92,6 +92,11 @@ class Projeto3Solucao(QgsProcessingAlgorithm):
         estradas_lyr = self.parameterAsVectorLayer(
                 parameters, self.INPUT_ROADS, context)
 
+        # Definir output 
+        (output_sink, output_dest_id) = self.parameterAsSink(parameters,
+                                                             self.OUTPUT,
+                                                             context,
+                                                             estradas_lyr.fields())
         # Pegar as dimensoes da estrada
         renderer = estradas_lyr.renderer()
         simbolo_estrada = renderer.symbol()
@@ -120,6 +125,7 @@ class Projeto3Solucao(QgsProcessingAlgorithm):
         # edifício ao longo do plano
         normalizar = gerar_funcao_normalizacao(tolerancia)
         vetor_deslocamento = [Point(0,0)]*len(coordenadas_edificacoes)
+        estradas_mais_proximas_finais = [0]*len(coordenadas_edificacoes)
         for i in range(200):
             coordenadas_atuais = list(map(soma_pontos,coordenadas_edificacoes,vetor_deslocamento))
 
@@ -128,12 +134,13 @@ class Projeto3Solucao(QgsProcessingAlgorithm):
             deslocamento_entre_pontos= [Point(0,0)]*len(coordenadas_edificacoes)
             for (i, p) in enumerate(coordenadas_atuais):
                 # Calcular o deslocamento entre edificios e a estrada
-                distancia_edificacao_estrada = lado_quadrado/(2**0.5) + largura_estrada*0.5
+                distancia_edificacao_estrada = lado_quadrado/(2**0.5) + largura_estrada*0.5 + 2.5
                 index_estrada, (dx, dy) = estradas_parametrizadas.calcular_empurrao(p, distancia_edificacao_estrada)
+                estradas_mais_proximas_finais[i] = index_estrada
                 deslocamento_da_estrada[i] = Point(dx/2,dy/2)
 
                 # Calcular o deslocamento entre edificios
-                distancia_entre_edificacoes = lado_quadrado*(2**0.5)
+                distancia_entre_edificacoes = lado_quadrado*(2**0.5) + 2.5
                 u = estradas_parametrizadas.segments_params[index_estrada].u
                 dp = Point(0.0,0.0)
                 for (j,p2) in enumerate(coordenadas_atuais):
@@ -177,6 +184,7 @@ class Projeto3Solucao(QgsProcessingAlgorithm):
         output_lyr.setRenderer(edificacoes_lyr.renderer().clone())
         output_lyr.triggerRepaint()
         QgsProject.instance().addMapLayer(output_lyr)
+        return {self.OUTPUT:output_dest_id}
 
     def name(self):
         return 'Solução do Projeto 3'
@@ -197,7 +205,7 @@ class Projeto3Solucao(QgsProcessingAlgorithm):
         return Projeto3Solucao()
 
 ###############################################################################
-######################## DEFINIÇÃO DA CLASSE ESTRADAS #########################
+######################## FUNÇÕES E CLASSES AUXILIARES #########################
 ###############################################################################
 from collections import namedtuple
 from numpy import sqrt
@@ -223,7 +231,7 @@ def deslocamento_entre_2_pontos(p1:Point, p2:Point, dist_minima:float):
     if dist_minima < distancia:
         return Point(0.0,0.0)
     else:
-        modulo_passo = 0.45*(dist_minima - distancia)/distancia
+        modulo_passo = 0.5*(dist_minima - distancia)/distancia
         return Point((p1.x - p2.x)*modulo_passo, (p1.y - p2.y)*modulo_passo)
         
 
