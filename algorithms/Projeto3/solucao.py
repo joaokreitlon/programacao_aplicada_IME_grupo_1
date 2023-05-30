@@ -109,24 +109,25 @@ class Projeto3Solucao(QgsProcessingAlgorithm):
         # Encontrar o empurrão para cada edificação na estrada e somar ele ao pontor original
         normalizar = gerar_funcao_normalizacao(tolerancia)
         vetor_deslocamento = [Point(0,0)]*len(coordenadas_edificacoes)
-        for i in range(50):
+        for i in range(200):
             coordenadas_atuais = list(map(soma_pontos,coordenadas_edificacoes,vetor_deslocamento))
 
             # Afastar das estradas
             deslocamento_da_estrada = [Point(0,0)]*len(coordenadas_edificacoes)
-            for (i, p) in enumerate(coordenadas_atuais):
-                dx, dy = estradas_parametrizadas.calcular_empurrao(p, 30.0)
-                deslocamento_da_estrada[i] = Point(dx/2,dy/2)
-            
-            # Afastar os pontos entre si
             deslocamento_entre_pontos= [Point(0,0)]*len(coordenadas_edificacoes)
-            for (i, p1) in enumerate(coordenadas_atuais):
-                dp1 = Point(0.0,0.0)
+            for (i, p) in enumerate(coordenadas_atuais):
+                # Calcular o deslocamento entre edificios e a estrada
+                index_estrada, (dx, dy) = estradas_parametrizadas.calcular_empurrao(p, 30.0)
+                deslocamento_da_estrada[i] = Point(dx/2,dy/2)
+
+                # Calcular o deslocamento entre edificios
+                u = estradas_parametrizadas.segments_params[index_estrada].u
+                dp = Point(0.0,0.0)
                 for (j,p2) in enumerate(coordenadas_atuais):
                     if j != i :
-                        dp1 = soma_pontos(deslocamento_entre_2_pontos(p1,p2, 50), dp1)
-                deslocamento_entre_pontos[i] = dp1
-
+                        dp = soma_pontos(deslocamento_entre_2_pontos(p,p2, 50.0*1.4), dp)
+                deslocamento_entre_pontos[i] = projetar(dp, u)
+            
             # Somar os deslocamentos e normalizar o vetor final
             vetor_deslocamento = list(map(soma_pontos,vetor_deslocamento,deslocamento_da_estrada))
             vetor_deslocamento = list(map(soma_pontos,vetor_deslocamento,deslocamento_entre_pontos))
@@ -209,15 +210,18 @@ def deslocamento_entre_2_pontos(p1:Point, p2:Point, dist_minima:float):
     if dist_minima < distancia:
         return Point(0.0,0.0)
     else:
-        f = 0.5*(dist_minima - distancia)/distancia
-        return Point((p2.x - p1.x)*f, (p2.y - p1.y)*f)
-
-        
-
+        modulo_passo = 0.35*(dist_minima - distancia)/distancia
+        return Point((p1.x - p2.x)*modulo_passo, (p1.y - p2.y)*modulo_passo)
         
 
 def soma_pontos(p1:Point, p2:Point):
     return Point(p1.x + p2.x,p1.y + p2.y) 
+
+def projetar(vetor:Point, direcao:Point):
+    vx,vy = direcao
+    x,y = vetor
+    modulo = vx*x + vy*y
+    return Point(vx*modulo,vy*modulo)
 
 def gerar_funcao_normalizacao(tolerancia:float):
     def funcao_normalizacao(vetor:Point) -> Point:
@@ -274,11 +278,12 @@ class Estrada():
 
         # Verificar se precisa realizar o empurrão
         if distancia_minima < distancia_edific_estrada:
-            return (0.0,0.0)
+            return (index_trecho,(0.0,0.0))
         else:
             (vx,vy) = self.segments_params[index_trecho].v
             (xref,yref) = self.segments_params[index_trecho].pref
             diferenca_distancia = abs(distancia_minima - distancia_edific_estrada)
             sentido = (vx*(x-xref) + vy*(y-yref))/abs(vx*(x-xref) + vy*(y-yref))
-            return (sentido*diferenca_distancia*vx, sentido*diferenca_distancia*vy)
+            return (index_trecho,
+                    (sentido*diferenca_distancia*vx, sentido*diferenca_distancia*vy))
 
