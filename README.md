@@ -596,4 +596,11 @@ Código utilizado: [link](https://github.com/joaokreitlon/programacao_aplicada_I
 
 
 <a name="sol_complementar_3"></a>
-### Solução Complementar
+### Solução complementar:
+Código utilizado: [link](https://github.com/joaokreitlon/programacao_aplicada_IME_grupo_1/blob/main/algorithms/Projeto3/solucao_complementar.py)
+
+### Objetivos:
+• Além de deslocar, rotacionar as edificações de modo perpendicular a rodovia mais
+próxima;
+
+• Preencher campo rotação em edificação;
