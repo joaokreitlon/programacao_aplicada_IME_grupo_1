@@ -129,7 +129,7 @@ class Projeto3SolucaoComplementar(QgsProcessingAlgorithm):
         normalizar = gerar_funcao_normalizacao(tolerancia)
         vetor_deslocamento = [Point(0,0)]*len(coordenadas_edificacoes)
         estradas_mais_proximas_finais = [0]*len(coordenadas_edificacoes)
-        for i in range(500):
+        for i in range(200):
             coordenadas_atuais = list(map(soma_pontos,coordenadas_edificacoes,vetor_deslocamento))
 
             # Afastar das estradas
