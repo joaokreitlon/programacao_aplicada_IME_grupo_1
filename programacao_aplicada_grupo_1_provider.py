@@ -36,6 +36,7 @@ from .algorithms.Projeto1.solucao_complementar import Projeto1SolucaoComplementa
 from .algorithms.Projeto2.solucao import Project_2
 from .algorithms.Projeto2.solucao_complementar import Project_2_Complementary
 from .algorithms.Projeto3.solucao import Projeto3Solucao
+from .algorithms.Projeto3.solucao_complementar import Projeto3SolucaoComplementar
 
 
 class ProgramacaoAplicadaGrupo1Provider(QgsProcessingProvider):
@@ -62,6 +63,7 @@ class ProgramacaoAplicadaGrupo1Provider(QgsProcessingProvider):
         self.addAlgorithm(Project_2())
         self.addAlgorithm(Project_2_Complementary())
         self.addAlgorithm(Projeto3Solucao())
+        self.addAlgorithm(Projeto3SolucaoComplementar())
 
         # add additional algorithms here
         # self.addAlgorithm(MyOtherAlgorithm())
