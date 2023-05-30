@@ -34,7 +34,7 @@ from qgis.core import (QgsProcessing,
                        QgsProject,
                        QgsField,
                        QgsFeatureSink,
-                       QgsCoordinateReferenceSystem,
+                       QgsCoordinateReferenceSystem, QgsRenderContext,
                        QgsVectorLayer,
                        QgsFields,
                        QgsGeometry,
@@ -88,25 +88,36 @@ class Projeto3Solucao(QgsProcessingAlgorithm):
 
     def processAlgorithm(self, parameters, context, feedback):
 
-        # Camada de estradas
+        # Definir a camada de estradas
         estradas_lyr = self.parameterAsVectorLayer(
                 parameters, self.INPUT_ROADS, context)
 
-        # Camada de pontos
+        # Pegar as dimensoes da estrada
+        renderer = estradas_lyr.renderer()
+        simbolo_estrada = renderer.symbol()
+        largura_estrada = simbolo_estrada.width()
+
+        # Definir a camada de edificações
         edificacoes_lyr = self.parameterAsVectorLayer(
                 parameters, self.INPUT_BUILDINGS, context)
 
-        # Camada de pontos
+        # Pegar as dimensoes do simbolo
+        renderer = edificacoes_lyr.renderer()
+        simbolo_quadrado = renderer.symbol()
+        lado_quadrado = simbolo_quadrado.size()
+
+        # Tolerancia de movimento dos edifíceis
         tolerancia = self.parameterAsDouble(
                 parameters, self.DISPLACEMENT_DISTANCE, context)
 
-        # Capturar a posicao de cada edificação em uma lista e calcular sua dimensão
+        # Capturar a posicao de cada edificação em uma lista
         coordenadas_edificacoes = coletar_pontos(edificacoes_lyr)
 
         # Criar a classe de estrada a partir da camada estrada
         estradas_parametrizadas = Estrada(estradas_lyr)
 
-        # Encontrar o empurrão para cada edificação na estrada e somar ele ao pontor original
+        # O loop é um método iterativo para calcular o deslocamento para cada 
+        # edifício ao longo do plano
         normalizar = gerar_funcao_normalizacao(tolerancia)
         vetor_deslocamento = [Point(0,0)]*len(coordenadas_edificacoes)
         for i in range(200):
@@ -117,15 +128,17 @@ class Projeto3Solucao(QgsProcessingAlgorithm):
             deslocamento_entre_pontos= [Point(0,0)]*len(coordenadas_edificacoes)
             for (i, p) in enumerate(coordenadas_atuais):
                 # Calcular o deslocamento entre edificios e a estrada
-                index_estrada, (dx, dy) = estradas_parametrizadas.calcular_empurrao(p, 30.0)
+                distancia_edificacao_estrada = lado_quadrado/(2**0.5) + largura_estrada*0.5
+                index_estrada, (dx, dy) = estradas_parametrizadas.calcular_empurrao(p, distancia_edificacao_estrada)
                 deslocamento_da_estrada[i] = Point(dx/2,dy/2)
 
                 # Calcular o deslocamento entre edificios
+                distancia_entre_edificacoes = lado_quadrado*(2**0.5)
                 u = estradas_parametrizadas.segments_params[index_estrada].u
                 dp = Point(0.0,0.0)
                 for (j,p2) in enumerate(coordenadas_atuais):
                     if j != i :
-                        dp = soma_pontos(deslocamento_entre_2_pontos(p,p2, 50.0*1.4), dp)
+                        dp = soma_pontos(deslocamento_entre_2_pontos(p,p2, distancia_entre_edificacoes), dp)
                 deslocamento_entre_pontos[i] = projetar(dp, u)
             
             # Somar os deslocamentos e normalizar o vetor final
@@ -210,7 +223,7 @@ def deslocamento_entre_2_pontos(p1:Point, p2:Point, dist_minima:float):
     if dist_minima < distancia:
         return Point(0.0,0.0)
     else:
-        modulo_passo = 0.35*(dist_minima - distancia)/distancia
+        modulo_passo = 0.45*(dist_minima - distancia)/distancia
         return Point((p1.x - p2.x)*modulo_passo, (p1.y - p2.y)*modulo_passo)
         
 
@@ -218,12 +231,19 @@ def soma_pontos(p1:Point, p2:Point):
     return Point(p1.x + p2.x,p1.y + p2.y) 
 
 def projetar(vetor:Point, direcao:Point):
+    """
+    Função para projetar um vetor em uma dada direção
+    """
     vx,vy = direcao
     x,y = vetor
     modulo = vx*x + vy*y
     return Point(vx*modulo,vy*modulo)
 
 def gerar_funcao_normalizacao(tolerancia:float):
+    """
+    Esta função gera outra para normalizar o vetor de deslocamento, garantindo
+    que ele não seja maior que a tolerancia.
+    """
     def funcao_normalizacao(vetor:Point) -> Point:
         modulo_2 = (vetor.x**2 + vetor.y**2)
         if modulo_2 > tolerancia**2:
@@ -270,10 +290,10 @@ class Estrada():
         for i, (u,v,(xref,yref),modulo) in enumerate(self.segments_params):
             vx,vy = v
             ux,uy = u
-            dist = abs(vx*(x-xref) + vy*(y-yref))
+            dist_proj = abs(vx*(x-xref) + vy*(y-yref))
             proj_u = ux*(x-xref) + uy*(y-yref)
-            if (distancia_edific_estrada > dist) and (0 < proj_u < modulo):
-                distancia_edific_estrada = dist
+            if (distancia_edific_estrada > dist_proj) and (0 < proj_u < modulo):
+                distancia_edific_estrada = dist_proj
                 index_trecho = i
 
         # Verificar se precisa realizar o empurrão
