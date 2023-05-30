@@ -68,21 +68,21 @@ class Projeto3Solucao(QgsProcessingAlgorithm):
 
         # Inputs
 
-        # Buildings - they will be the focus of cartographic generalization (External iteration).
+        # Edifícios - eles serão o foco da generalização cartográfica (iteração externa).
         self.addParameter(QgsProcessingParameterFeatureSource(self.INPUT_BUILDINGS,
                                                               'BUILDINGS', [QgsProcessing.TypeVectorPoint], defaultValue=None))
 
-        # Roads - they will be used to verify if a building is left or right of a road and to move the building according to geometries and styles.
+       # Estradas - elas serão usadas para verificar se um edifício está à esquerda ou à direita de uma estrada e para mover o edifício de acordo com geometrias e estilos.
         self.addParameter(QgsProcessingParameterFeatureSource(self.INPUT_ROADS,
                                                               'ROADS', [QgsProcessing.TypeVectorLine], defaultValue=None))
 
-        # Displacement distance - it will be used to create the space between buildings and between a single build and the road.
+        # Distância de deslocamento - ela será usada para criar o espaço entre edifícios e entre um único edifício e a estrada.
         self.addParameter(QgsProcessingParameterNumber(self.DISPLACEMENT_DISTANCE,
                                                        'DISPLACEMENT DISTANCE',
                                                        type=QgsProcessingParameterNumber.Double,
                                                        defaultValue=10.0))
 
-        # Output - Generalized layer with buildings displaced and rotated.
+        # Saída - Camada generalizada com edifícios deslocados e rotacionados.
         self.addParameter(QgsProcessingParameterFeatureSink(self.OUTPUT,
                                                             'GENERALIZED_BUILDINGS'))
 
