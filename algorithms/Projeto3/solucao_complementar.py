@@ -30,7 +30,7 @@ from qgis.core import (QgsProcessing,
                        QgsProcessingParameterFeatureSource,
                        QgsProcessingParameterMultipleLayers,
                        QgsProcessingParameterFeatureSink,
-                       QgsProcessingParameterNumber,
+                       QgsProcessingParameterNumber, QgsProcessingParameterVectorLayer,
                        QgsProject,
                        QgsField,
                        QgsFeatureSink,
@@ -48,6 +48,9 @@ from qgis.PyQt.QtCore import QCoreApplication
 import processing
 from qgis.utils import iface
 
+from collections import namedtuple
+from numpy import sqrt, arccos, rad2deg
+
 _author_ = 'Grupo 1'
 _date_ = '2023-05-20'
 _copyright_ = '(C) 2023 by Grupo 1'
@@ -61,33 +64,137 @@ class Projeto3SolucaoComplementar(QgsProcessingAlgorithm):
 
     INPUT_BUILDINGS = 'INPUT_BUILDINGS'
     INPUT_ROADS = 'INPUT_ROADS'
+    DISPLACEMENT_DISTANCE = 'DISPLACEMENT_DISTANCE'
     OUTPUT = 'OUTPUT'
 
     def initAlgorithm(self, config=None):
 
         # Inputs
+        # Buildings - they will be the focus of cartographic generalization (External iteration).
+        self.addParameter(QgsProcessingParameterVectorLayer(self.INPUT_BUILDINGS,
+                                                              'BUILDINGS', defaultValue=None))
 
-        # Buildings - they will be the focus of cartographic generalization - rotation.
-        self.addParameter(QgsProcessingParameterFeatureSource(self.INPUT_BUILDINGS,
-                                                              'BUILDINGS', [QgsProcessing.TypeVectorPoint], defaultValue=None))
+        # Roads - they will be used to verify if a building is left or right of a road and to move the building according to geometries and styles.
+        
+        self.addParameter(QgsProcessingParameterVectorLayer(self.INPUT_ROADS,
+                                                              'ROADS', defaultValue=None))
 
-        # Roads - used to get the direction vector for rotation.
-        self.addParameter(QgsProcessingParameterFeatureSource(self.INPUT_ROADS,
-                                                              'ROADS', [QgsProcessing.TypeVectorLine], defaultValue=None))
+        # Displacement distance - it will be used to create the space between buildings and between a single build and the road.
+        self.addParameter(QgsProcessingParameterNumber(self.DISPLACEMENT_DISTANCE,
+                                                       'DISPLACEMENT DISTANCE',
+                                                       type=QgsProcessingParameterNumber.Double,
+                                                       defaultValue=50.0))
 
-        # Output - Generalized layer with buildings rotated.
+        # # Output - Generalized layer with buildings displaced and rotated.
         self.addParameter(QgsProcessingParameterFeatureSink(self.OUTPUT,
                                                             'GENERALIZED_BUILDINGS'))
 
     def processAlgorithm(self, parameters, context, feedback):
 
-        # Multiline source
-        src_ml = self.parameterAsSource(
-            parameters, self.INPUT_MULTILINE, context)
+        # Definir a camada de estradas
+        estradas_lyr = self.parameterAsVectorLayer(
+                parameters, self.INPUT_ROADS, context)
 
-        # Polygon source
-        src_poly = self.parameterAsSource(
-            parameters, self.INPUT_POLYGON, context)
+        # Definir output 
+        (output_sink, output_dest_id) = self.parameterAsSink(parameters,
+                                                             self.OUTPUT,
+                                                             context,
+                                                             estradas_lyr.fields())
+        # Pegar as dimensoes da estrada
+        renderer = estradas_lyr.renderer()
+        simbolo_estrada = renderer.symbol()
+        largura_estrada = simbolo_estrada.width()
+
+        # Definir a camada de edificações
+        edificacoes_lyr = self.parameterAsVectorLayer(
+                parameters, self.INPUT_BUILDINGS, context)
+
+        # Pegar as dimensoes do simbolo
+        renderer = edificacoes_lyr.renderer()
+        simbolo_quadrado = renderer.symbol()
+        lado_quadrado = simbolo_quadrado.size()
+
+        # Tolerancia de movimento dos edifíceis
+        tolerancia = self.parameterAsDouble(
+                parameters, self.DISPLACEMENT_DISTANCE, context)
+
+        # Capturar a posicao de cada edificação em uma lista
+        coordenadas_edificacoes = coletar_pontos(edificacoes_lyr)
+
+        # Criar a classe de estrada a partir da camada estrada
+        estradas_parametrizadas = Estrada(estradas_lyr)
+
+        # O loop é um método iterativo para calcular o deslocamento para cada 
+        # edifício ao longo do plano
+        normalizar = gerar_funcao_normalizacao(tolerancia)
+        vetor_deslocamento = [Point(0,0)]*len(coordenadas_edificacoes)
+        estradas_mais_proximas_finais = [0]*len(coordenadas_edificacoes)
+        for i in range(200):
+            coordenadas_atuais = list(map(soma_pontos,coordenadas_edificacoes,vetor_deslocamento))
+
+            # Afastar das estradas
+            deslocamento_da_estrada = [Point(0,0)]*len(coordenadas_edificacoes)
+            deslocamento_entre_pontos= [Point(0,0)]*len(coordenadas_edificacoes)
+            for (i, p) in enumerate(coordenadas_atuais):
+                # Calcular o deslocamento entre edificios e a estrada
+                distancia_edificacao_estrada = lado_quadrado/(2**0.5) + largura_estrada*0.5 + 2.5
+                index_estrada, (dx, dy) = estradas_parametrizadas.calcular_empurrao(p, distancia_edificacao_estrada)
+                estradas_mais_proximas_finais[i] = index_estrada
+                deslocamento_da_estrada[i] = Point(dx/2,dy/2)
+
+                # Calcular o deslocamento entre edificios
+                distancia_entre_edificacoes = lado_quadrado*(2**0.5) + 2.5
+                u = estradas_parametrizadas.segments_params[index_estrada].u
+                dp = Point(0.0,0.0)
+                for (j,p2) in enumerate(coordenadas_atuais):
+                    if j != i :
+                        dp = soma_pontos(deslocamento_entre_2_pontos(p,p2, distancia_entre_edificacoes), dp)
+                deslocamento_entre_pontos[i] = projetar(dp, u)
+            
+            # Somar os deslocamentos e normalizar o vetor final
+            vetor_deslocamento = list(map(soma_pontos,vetor_deslocamento,deslocamento_da_estrada))
+            vetor_deslocamento = list(map(soma_pontos,vetor_deslocamento,deslocamento_entre_pontos))
+            vetor_deslocamento = list(map(normalizar,vetor_deslocamento))
+
+
+        # Criar uma nova camada com esses pontos 
+        output_lyr = QgsVectorLayer("MultiPoint?crs=EPSG:31982", 'Pontos_Generalizados', 'memory')
+        fields = [field for field in edificacoes_lyr.fields()]
+        dp = output_lyr.dataProvider()
+        dp.addAttributes(fields)
+        output_lyr.updateFields()
+
+        # Encontrar os angulos de rotacao para cada figura
+        angulos_de_rotacao = []
+        for index in estradas_mais_proximas_finais:
+            vx, _ = estradas_parametrizadas.segments_params[index].v
+            angulo_em_graus = rad2deg(arccos(vx))
+            angulos_de_rotacao.append(angulo_em_graus)
+
+        # Aplicar a translacao e rotacao para cada feature
+        coordenadas_finais = list(map(soma_pontos,vetor_deslocamento,coordenadas_edificacoes))
+        for (feature, novas_coordenadas, angulo) in zip(edificacoes_lyr.getFeatures(),
+                                                        coordenadas_finais,
+                                                        angulos_de_rotacao):
+            geom = feature.geometry()
+            # Coletar cada ponto e gerar um deslocado
+            points = []
+            for _ in geom.asMultiPoint():
+                x,y = novas_coordenadas
+                points.append(QgsPointXY(x,y))
+            # Gerar a nova geometria 
+            new_geom = QgsGeometry.fromMultiPointXY(points)
+            feature.setGeometry(new_geom)
+            feature['rotacao'] = float(angulo)
+            dp.addFeature(feature)
+        dp.updateExtents()
+        output_lyr.updateExtents()
+
+        # Retornar essa camada
+        output_lyr.setRenderer(edificacoes_lyr.renderer().clone())
+        output_lyr.triggerRepaint()
+        QgsProject.instance().addMapLayer(output_lyr)
+        return {self.OUTPUT:output_dest_id}
 
     def name(self):
         return 'Solução Complementar do Projeto 3'
@@ -106,3 +213,119 @@ class Projeto3SolucaoComplementar(QgsProcessingAlgorithm):
 
     def createInstance(self):
         return Projeto3SolucaoComplementar()
+
+###############################################################################
+######################## FUNÇÕES E CLASSES AUXILIARES #########################
+###############################################################################
+
+LineSegment = namedtuple("LineSegment",["beg","end"])
+SegmentParameters = namedtuple("SegParams",["u","v","pref","lenght"])
+Point = namedtuple("Point", ["x","y"])
+
+def coletar_pontos(layer):
+    """
+    Coletar as coordenadas dos pontos com as características da camada de 
+    edificação.
+    """
+    coordenates = []
+    for feature in layer.getFeatures():
+        geom = feature.geometry()
+        for part in geom.asMultiPoint():
+            coordenates.append(Point(part.x(), part.y()))
+    return coordenates
+
+def deslocamento_entre_2_pontos(p1:Point, p2:Point, dist_minima:float):
+    distancia = sqrt((p2.x - p1.x)**2 + (p2.y - p1.y)**2)
+    if dist_minima < distancia:
+        return Point(0.0,0.0)
+    else:
+        modulo_passo = 0.5*(dist_minima - distancia)/distancia
+        return Point((p1.x - p2.x)*modulo_passo, (p1.y - p2.y)*modulo_passo)
+        
+
+def soma_pontos(p1:Point, p2:Point):
+    return Point(p1.x + p2.x,p1.y + p2.y) 
+
+def projetar(vetor:Point, direcao:Point):
+    """
+    Função para projetar um vetor em uma dada direção
+    """
+    vx,vy = direcao
+    x,y = vetor
+    modulo = vx*x + vy*y
+    return Point(vx*modulo,vy*modulo)
+
+def gerar_funcao_normalizacao(tolerancia:float):
+    """
+    Esta função gera outra para normalizar o vetor de deslocamento, garantindo
+    que ele não seja maior que a tolerancia.
+    """
+    def funcao_normalizacao(vetor:Point) -> Point:
+        modulo_2 = (vetor.x**2 + vetor.y**2)
+        if modulo_2 > tolerancia**2:
+            t = sqrt((tolerancia**2)/modulo_2)
+            return Point(vetor.x*t, vetor.y*t)
+        else:
+            return vetor
+    return funcao_normalizacao
+
+class Estrada():
+    def __init__(self, layer) -> None:
+        self.segments_params = self.parametrizar_segmentos(layer)
+
+    def parametrizar_segmentos(self,layer:QgsVectorLayer):
+        # Assumindo que pegamos uma do tipo
+        line_segments = []
+        for feature in layer.getFeatures():
+            geom = feature.geometry()
+            if geom.isMultipart():
+                points_list = geom.asMultiPolyline()[0]
+                for part in zip(points_list[:-1], points_list[1:]):
+                    p0, pf = part
+                    x0,y0,xf,yf = p0.x(),p0.y(), pf.x(),pf.y()
+
+                    # Definir o ponto de referência
+                    pr = Point(x0, y0)
+
+                    # Calcular os vetores perpendiculares
+                    xdif = xf - x0
+                    ydif = yf - y0
+                    length = sqrt(xdif**2 + ydif**2)
+                    u = Point(xdif/length, ydif/length)
+                    v = Point(ydif/length, -xdif/length)
+                    line_segments.append(SegmentParameters(u,v,pr,length))
+        return line_segments
+
+
+    def calcular_empurrao(self,p:Point, distancia_minima:float):
+        x,y = p
+        distancia_edific_estrada = 10000.0
+        index_trecho = 0
+
+        # Encontrar a estrada que esta mais proxima
+        for i, (u,v,(xref,yref),modulo) in enumerate(self.segments_params):
+            vx,vy = v
+            ux,uy = u
+            dist_proj = abs(vx*(x-xref) + vy*(y-yref))
+            proj_u = ux*(x-xref) + uy*(y-yref)
+            dist_bordas = min(sqrt((x-xref)**2 + (y-yref)**2),
+                              sqrt((x-(xref+ux*modulo))**2 + (y-(yref+uy*modulo))**2))
+            if (distancia_edific_estrada > dist_proj) and (0 < proj_u < modulo):
+                distancia_edific_estrada = dist_proj
+                index_trecho = i
+
+            elif (distancia_edific_estrada > dist_bordas):
+                distancia_edific_estrada = dist_bordas
+                index_trecho = i
+
+        # Verificar se precisa realizar o empurrão
+        if distancia_minima < distancia_edific_estrada:
+            return (index_trecho,(0.0,0.0))
+        else:
+            (vx,vy) = self.segments_params[index_trecho].v
+            (xref,yref) = self.segments_params[index_trecho].pref
+            diferenca_distancia = abs(distancia_minima - distancia_edific_estrada)
+            sentido = (vx*(x-xref) + vy*(y-yref))/abs(vx*(x-xref) + vy*(y-yref))
+            return (index_trecho,
+                    (sentido*diferenca_distancia*vx, sentido*diferenca_distancia*vy))
+
