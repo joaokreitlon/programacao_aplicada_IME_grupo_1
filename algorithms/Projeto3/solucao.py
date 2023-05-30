@@ -80,7 +80,7 @@ class Projeto3Solucao(QgsProcessingAlgorithm):
         self.addParameter(QgsProcessingParameterNumber(self.DISPLACEMENT_DISTANCE,
                                                        'DISPLACEMENT DISTANCE',
                                                        type=QgsProcessingParameterNumber.Double,
-                                                       defaultValue=10.0))
+                                                       defaultValue=50.0))
 
         # Output - Generalized layer with buildings displaced and rotated.
         self.addParameter(QgsProcessingParameterFeatureSink(self.OUTPUT,
@@ -96,6 +96,10 @@ class Projeto3Solucao(QgsProcessingAlgorithm):
         edificacoes_lyr = self.parameterAsVectorLayer(
                 parameters, self.INPUT_BUILDINGS, context)
 
+        # Camada de pontos
+        tolerancia = self.parameterAsDouble(
+                parameters, self.DISPLACEMENT_DISTANCE, context)
+
         # Capturar a posicao de cada edificação em uma lista e calcular sua dimensão
         coordenadas_edificacoes = coletar_pontos(edificacoes_lyr)
 
@@ -103,10 +107,30 @@ class Projeto3Solucao(QgsProcessingAlgorithm):
         estradas_parametrizadas = Estrada(estradas_lyr)
 
         # Encontrar o empurrão para cada edificação na estrada e somar ele ao pontor original
-        for (i, coord) in enumerate(coordenadas_edificacoes):
-            dx, dy = estradas_parametrizadas.calcular_empurrao(coord, 25.0)
-            x, y = coord
-            coordenadas_edificacoes[i] = Point(x+dx,y+dy)
+        normalizar = gerar_funcao_normalizacao(tolerancia)
+        vetor_deslocamento = [Point(0,0)]*len(coordenadas_edificacoes)
+        for i in range(50):
+            coordenadas_atuais = list(map(soma_pontos,coordenadas_edificacoes,vetor_deslocamento))
+
+            # Afastar das estradas
+            deslocamento_da_estrada = [Point(0,0)]*len(coordenadas_edificacoes)
+            for (i, p) in enumerate(coordenadas_atuais):
+                dx, dy = estradas_parametrizadas.calcular_empurrao(p, 30.0)
+                deslocamento_da_estrada[i] = Point(dx/2,dy/2)
+            
+            # Afastar os pontos entre si
+            deslocamento_entre_pontos= [Point(0,0)]*len(coordenadas_edificacoes)
+            for (i, p1) in enumerate(coordenadas_atuais):
+                dp1 = Point(0.0,0.0)
+                for (j,p2) in enumerate(coordenadas_atuais):
+                    if j != i :
+                        dp1 = soma_pontos(deslocamento_entre_2_pontos(p1,p2, 50), dp1)
+                deslocamento_entre_pontos[i] = dp1
+
+            # Somar os deslocamentos e normalizar o vetor final
+            vetor_deslocamento = list(map(soma_pontos,vetor_deslocamento,deslocamento_da_estrada))
+            vetor_deslocamento = list(map(soma_pontos,vetor_deslocamento,deslocamento_entre_pontos))
+            vetor_deslocamento = list(map(normalizar,vetor_deslocamento))
 
 
         # Criar uma nova camada com esses pontos 
@@ -118,15 +142,14 @@ class Projeto3Solucao(QgsProcessingAlgorithm):
 
 
         # Aplicar a translacao e rotacao para cada feature
-        # new_features = []
-        for (feature, novas_coordenadas) in zip(edificacoes_lyr.getFeatures(), coordenadas_edificacoes):
+        coordenadas_finais = list(map(soma_pontos,vetor_deslocamento,coordenadas_edificacoes))
+        for (feature, novas_coordenadas) in zip(edificacoes_lyr.getFeatures(), coordenadas_finais):
             geom = feature.geometry()
             # Coletar cada ponto e gerar um deslocado
             points = []
-            for part in geom.asMultiPoint():
-                coord = Point(part.x(), part.y())   
-                dx, dy = estradas_parametrizadas.calcular_empurrao(coord, 25.0)
-                points.append(QgsPointXY(coord.x + dx,coord.y + dy))
+            for _ in geom.asMultiPoint():
+                x,y = novas_coordenadas
+                points.append(QgsPointXY(x,y))
             # Gerar a nova geometria 
             new_geom = QgsGeometry.fromMultiPointXY(points)
             feature.setGeometry(new_geom)
@@ -181,6 +204,30 @@ def coletar_pontos(layer):
             coordenates.append(Point(part.x(), part.y()))
     return coordenates
 
+def deslocamento_entre_2_pontos(p1:Point, p2:Point, dist_minima:float):
+    distancia = sqrt((p2.x - p1.x)**2 + (p2.y - p1.y)**2)
+    if dist_minima < distancia:
+        return Point(0.0,0.0)
+    else:
+        f = 0.5*(dist_minima - distancia)/distancia
+        return Point((p2.x - p1.x)*f, (p2.y - p1.y)*f)
+
+        
+
+        
+
+def soma_pontos(p1:Point, p2:Point):
+    return Point(p1.x + p2.x,p1.y + p2.y) 
+
+def gerar_funcao_normalizacao(tolerancia:float):
+    def funcao_normalizacao(vetor:Point) -> Point:
+        modulo_2 = (vetor.x**2 + vetor.y**2)
+        if modulo_2 > tolerancia**2:
+            t = sqrt((tolerancia**2)/modulo_2)
+            return Point(vetor.x*t, vetor.y*t)
+        else:
+            return vetor
+    return funcao_normalizacao
 
 class Estrada():
     def __init__(self, layer) -> None:
