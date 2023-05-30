@@ -67,15 +67,15 @@ class Projeto3SolucaoComplementar(QgsProcessingAlgorithm):
 
         # Inputs
 
-        # Buildings - they will be the focus of cartographic generalization - rotation.
+        # Edifícios - serão o foco da generalização cartográfica - rotação.
         self.addParameter(QgsProcessingParameterFeatureSource(self.INPUT_BUILDINGS,
                                                               'BUILDINGS', [QgsProcessing.TypeVectorPoint], defaultValue=None))
 
-        # Roads - used to get the direction vector for rotation.
+        # Estradas - usado para obter o vetor de direção para rotação.
         self.addParameter(QgsProcessingParameterFeatureSource(self.INPUT_ROADS,
                                                               'ROADS', [QgsProcessing.TypeVectorLine], defaultValue=None))
 
-        # Output - Generalized layer with buildings rotated.
+        # Output - Camada generalizada com edifícios girados.
         self.addParameter(QgsProcessingParameterFeatureSink(self.OUTPUT,
                                                             'GENERALIZED_BUILDINGS'))
 
