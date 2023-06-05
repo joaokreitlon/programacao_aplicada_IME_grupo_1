@@ -61,36 +61,57 @@ _revision_ = '$Format:%H$'
 
 class Projeto4Solucao(QgsProcessingAlgorithm):
 
-    INPUT_BUILDINGS = 'INPUT_BUILDINGS'
-    INPUT_ROADS = 'INPUT_ROADS'
-    DISPLACEMENT_DISTANCE = 'DISPLACEMENT_DISTANCE'
-    OUTPUT = 'OUTPUT'
+    TARGET_INPUT = 'TARGET_INPUT'
+    FRAME_INPUT = 'FRAME_INPUT'
+    SEARCH_DISTANCE = 'SEARCH_DISTANCE'
+    ERROR_OUTPUT = 'ERROR_OUTPUT'
 
     def initAlgorithm(self, config=None):
 
         # Inputs
-        # Buildings - they will be the focus of cartographic generalization (External iteration).
-        self.addParameter(QgsProcessingParameterVectorLayer(self.INPUT_BUILDINGS,
-                                                            'BUILDINGS', defaultValue=None))
+        # Target - Camada vetorial do tipo linha para verificação de erros de ligação.
+        self.addParameter(QgsProcessingParameterVectorLayer(self.TARGET_INPUT,
+                                                            'Camada-alvo', defaultValue=None))
 
-        # Roads - they will be used to verify if a building is left or right of a road and to move the building according to geometries and styles.
+        # Frame - Camada vetorial do tipo polígono que delimita a área de verificação de erros.
+        self.addParameter(QgsProcessingParameterVectorLayer(self.FRAME_INPUT,
+                                                            'Moldura', defaultValue=None))
 
-        self.addParameter(QgsProcessingParameterVectorLayer(self.INPUT_ROADS,
-                                                            'ROADS', defaultValue=None))
-
-        # Displacement distance - it will be used to create the space between buildings and between a single build and the road.
-        self.addParameter(QgsProcessingParameterNumber(self.DISPLACEMENT_DISTANCE,
-                                                       'DISPLACEMENT DISTANCE',
+        # Search distance - Distância de busca de feições para verificação de erros.
+        self.addParameter(QgsProcessingParameterNumber(self.SEARCH_DISTANCE,
+                                                       'Distância de busca',
                                                        type=QgsProcessingParameterNumber.Double,
                                                        defaultValue=50.0))
 
-        # # Output - Generalized layer with buildings displaced and rotated.
-        self.addParameter(QgsProcessingParameterFeatureSink(self.OUTPUT,
-                                                            'GENERALIZED_BUILDINGS'))
+        # Output - Generalized layer with buildings displaced and rotated.
+        self.addParameter(QgsProcessingParameterFeatureSink(self.ERROR_OUTPUT,
+                                                            'ERROR_OUTPUT'))
 
     def processAlgorithm(self, parameters, context, feedback):
 
-        print('processing')
+        # Camada de moldura
+        moldura = self.parameterAsVectorLayer(
+            parameters, self.FRAME_INPUT, context)
+
+        # Camada de saída do tipo ponto com campo de "tipo do erro"
+        fields = QgsFields()
+        fields.append(QgsField("tipo_do_erro", QVariant.String))
+        (output_sink, output_dest_id) = self.parameterAsSink(parameters, self.ERROR_OUTPUT, context,
+                                                             fields, 1, moldura.sourceCrs())
+
+        erro1 = "geometria_desconectada"
+        erro2 = "atributos_diferentes"
+
+        ''' Dentro da iteração:
+
+        feição = feature de estudo do erro (dentro de target_input_layer_k)
+
+        new_feature = QgsFeature(fields)
+        new_feature.setGeometry(feição)
+        new_feature.setAttribute(0, erro1 ou erro2)
+        output_sink.addFeature(new_feature, QgsFeatureSink.FastInsert)
+        
+        '''
 
     def name(self):
         return 'Solução do Projeto 4'
