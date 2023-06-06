@@ -25,22 +25,25 @@ programacao_aplicada_IME_grupo_1
  *                                                                         *
  *************************/
 """
-from qgis.core import (QgsProcessing,
-                       QgsProcessingAlgorithm,
-                       QgsProcessingParameterFeatureSource,
-                       QgsProcessingParameterMultipleLayers,
-                       QgsProcessingParameterFeatureSink,
-                       QgsProcessingParameterNumber, QgsProcessingParameterVectorLayer,
-                       QgsProject,
-                       QgsField,
-                       QgsFeatureSink,
-                       QgsCoordinateReferenceSystem,
-                       QgsVectorLayer,
-                       QgsFields,
-                       QgsGeometry,
-                       QgsPointXY,
-                       QgsFeature,
-                       QgsRaster)
+from qgis.core import (
+    QgsProcessing,
+    QgsProcessingAlgorithm,
+    QgsProcessingParameterFeatureSource,
+    QgsProcessingParameterMultipleLayers,
+    QgsProcessingParameterFeatureSink,
+    QgsProcessingParameterNumber,
+    QgsProcessingParameterVectorLayer,
+    QgsProject,
+    QgsField,
+    QgsFeatureSink,
+    QgsCoordinateReferenceSystem,
+    QgsVectorLayer,
+    QgsFields,
+    QgsGeometry,
+    QgsPointXY,
+    QgsFeature,
+    QgsRaster,
+)
 
 from PyQt5.QtCore import QVariant
 from qgis.analysis import QgsNativeAlgorithms
@@ -51,50 +54,58 @@ from qgis.utils import iface
 from collections import namedtuple
 from numpy import sqrt, arccos, rad2deg
 
-_author_ = 'Grupo 1'
-_date_ = '2023-06-03'
-_copyright_ = '(C) 2023 by Grupo 1'
+_author_ = "Grupo 1"
+_date_ = "2023-06-03"
+_copyright_ = "(C) 2023 by Grupo 1"
 
 # This will get replaced with a git SHA1 when you do a git archive
 
-_revision_ = '$Format:%H$'
+_revision_ = "$Format:%H$"
 
 
 class Projeto4SolucaoComplementar(QgsProcessingAlgorithm):
-
-    INPUT_BUILDINGS = 'INPUT_BUILDINGS'
-    INPUT_ROADS = 'INPUT_ROADS'
-    DISPLACEMENT_DISTANCE = 'DISPLACEMENT_DISTANCE'
-    OUTPUT = 'OUTPUT'
+    INPUT_BUILDINGS = "INPUT_BUILDINGS"
+    INPUT_ROADS = "INPUT_ROADS"
+    DISPLACEMENT_DISTANCE = "DISPLACEMENT_DISTANCE"
+    OUTPUT = "OUTPUT"
 
     def initAlgorithm(self, config=None):
-
         # Inputs
         # Buildings - they will be the focus of cartographic generalization (External iteration).
-        self.addParameter(QgsProcessingParameterVectorLayer(self.INPUT_BUILDINGS,
-                                                            'BUILDINGS', defaultValue=None))
+        self.addParameter(
+            QgsProcessingParameterVectorLayer(
+                self.INPUT_BUILDINGS, "BUILDINGS", defaultValue=None
+            )
+        )
 
         # Roads - they will be used to verify if a building is left or right of a road and to move the building according to geometries and styles.
 
-        self.addParameter(QgsProcessingParameterVectorLayer(self.INPUT_ROADS,
-                                                            'ROADS', defaultValue=None))
+        self.addParameter(
+            QgsProcessingParameterVectorLayer(
+                self.INPUT_ROADS, "ROADS", defaultValue=None
+            )
+        )
 
         # Displacement distance - it will be used to create the space between buildings and between a single build and the road.
-        self.addParameter(QgsProcessingParameterNumber(self.DISPLACEMENT_DISTANCE,
-                                                       'DISPLACEMENT DISTANCE',
-                                                       type=QgsProcessingParameterNumber.Double,
-                                                       defaultValue=50.0))
+        self.addParameter(
+            QgsProcessingParameterNumber(
+                self.DISPLACEMENT_DISTANCE,
+                "DISPLACEMENT DISTANCE",
+                type=QgsProcessingParameterNumber.Double,
+                defaultValue=50.0,
+            )
+        )
 
         # # Output - Generalized layer with buildings displaced and rotated.
-        self.addParameter(QgsProcessingParameterFeatureSink(self.OUTPUT,
-                                                            'GENERALIZED_BUILDINGS'))
+        self.addParameter(
+            QgsProcessingParameterFeatureSink(self.OUTPUT, "GENERALIZED_BUILDINGS")
+        )
 
     def processAlgorithm(self, parameters, context, feedback):
-
-        print('processing')
+        print("processing")
 
     def name(self):
-        return 'Solução Complementar do Projeto 4'
+        return "Solução Complementar do Projeto 4"
 
     def displayName(self):
         return self.tr(self.name())
@@ -103,10 +114,10 @@ class Projeto4SolucaoComplementar(QgsProcessingAlgorithm):
         return self.tr(self.groupId())
 
     def groupId(self):
-        return 'Projeto 4'
+        return "Projeto 4"
 
     def tr(self, string):
-        return QCoreApplication.translate('Processing', string)
+        return QCoreApplication.translate("Processing", string)
 
     def createInstance(self):
         return Projeto4SolucaoComplementar()
