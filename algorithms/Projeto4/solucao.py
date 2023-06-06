@@ -113,8 +113,13 @@ class Projeto4Solucao(QgsProcessingAlgorithm):
         janela_busca = self.parameterAsDouble(parameters, self.SEARCH_DISTANCE, context)
         regioes_interiores = definir_secoes_interiores(moldura, janela_busca)
         pontos_por_regiao = []
+        p0 = pontas[0]
         for regiao in regioes_interiores:
-            pontos_por_regiao.append([p for p in pontas if regiao.contains(p[0])])
+            ponto_em_regiao = []
+            for ponto in pontas:
+                if ponto != p0 and regiao.contains(ponto[0]):
+                    ponto_em_regiao.append(ponto)
+            pontos_por_regiao.append(ponto_em_regiao)
 
         # Compar os pontos entre cada regiao e adicionalos na camada de saída
         pontos_com_erro = []
@@ -125,12 +130,15 @@ class Projeto4Solucao(QgsProcessingAlgorithm):
                     for p2, nome2 in p_regiao2:
                         x2, y2 = p2.x, p2.y
                         # Se os pontos conterem um erro, basta adicionalos
-                        is_disconected = disconnected_geometry(x1, y1, x2, y2, 0)
+                        is_disconected = disconnected_geometry(
+                            x1, y1, x2, y2, 0.00000001
+                        )
+                        has_minimum_distance = minimal_distance(x1, y1, x2, y2, 0.0001)
                         same_name = nome1 == nome2
-                        if is_disconected and same_name:
-                            pontos_com_erro.append((p1, p2, "geometria_desconectada"))
-                        elif not is_disconected and not same_name:
+                        if (not is_disconected) and (not same_name):
                             pontos_com_erro.append((p1, p2, "atributos_diferentes"))
+                        elif is_disconected and same_name and has_minimum_distance:
+                            pontos_com_erro.append((p1, p2, "geometria_desconectada"))
 
         # Camada de saída do tipo ponto com campo de "tipo do erro"
         fields = QgsFields()
@@ -309,19 +317,18 @@ def coletar_pontas(corregos: QgsVectorLayer):
     return pontos
 
 
-def disconnected_geometry(x1, y1, x2, y2, tol):
-    p1 = np.array((x1, y1))
-    p2 = np.array((x2, y2))
-    distance = np.linalg.norm(p1 - p2)
-
-    if 0.0001 > distance > tol:
+def minimal_distance(x1, y1, x2, y2, tol):
+    distance = ((x1 - x2) ** 2 + (y1 - y2) ** 2) ** 0.5
+    if tol >= distance:
         return True
     else:
         return False
 
 
-def different_attributes(nome_feat1, nome_feat2):
-    if nome_feat1 != nome_feat2:
+def disconnected_geometry(x1, y1, x2, y2, tol):
+    distance = ((x1 - x2) ** 2 + (y1 - y2) ** 2) ** 0.5
+
+    if distance >= tol:
         return True
     else:
         return False
