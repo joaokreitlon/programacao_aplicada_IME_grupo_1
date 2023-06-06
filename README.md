@@ -22,6 +22,11 @@ O trabalho proposto consiste na elaboração de um plugin para o QGIS, no qual s
 
   * [Solução do problema proposto](#sol_3)
   * [Solução complementar](#sol_complementar_3)
+ 
+* **Projeto 4:** [Revisão de ligação entre produtos](#proj4)
+
+  * [Solução do problema proposto](#sol_4)
+  * [Solução complementar](#sol_complementar_4)
 
 <a name="proj1"></a>
 
@@ -604,3 +609,58 @@ Código utilizado: [link](https://github.com/joaokreitlon/programacao_aplicada_I
 próxima;
 
 • Preencher campo rotação em edificação;
+
+## Projeto 4: Revisão de ligação entre produtos
+
+### Orientação:
+A orientação do trabalho se encontra no [link](https://classroom.google.com/u/1/c/NTkxMTg3ODA0MjI2/a/NTU0MTYzMzIwMTQ2/details)
+
+
+### Objetivos:
+Desenvolver um processing que
+seja capaz de identificar erros de
+ligação entre produtos (as bordas
+dos produtos que não são
+compartilhadas no conjunto de
+dados não devem ser verificadas).
+
+Os inputs são: lista de camadas de
+primitiva linha, camada de
+molduras, distância de busca.
+
+O output deve ser uma camada de
+geometria ponto no mesmo CRS
+da camada de moldura, com os
+tipos de erros de ligação.
+
+<a name="sol_4"></a>
+
+### Estrutura do Processing da solução
+Código utilizado: [link](https://github.com/joaokreitlon/programacao_aplicada_IME_grupo_1/blob/main/algorithms/Projeto4/solucao.py) 
+
+
+<a name="sol_complementar_4"></a>
+
+### Solução complementar:
+Código utilizado: [link](https://github.com/joaokreitlon/programacao_aplicada_IME_grupo_1/blob/main/algorithms/Projeto4/solucao_complementar.py)
+
+### Objetivos:
+Desenvolver um processing
+que seja capaz de identificar
+erros de ligação do tipo
+omissão de polígonos entre
+produtos (as bordas dos
+produtos que não são
+compartilhadas no conjunto de
+dados não devem ser
+verificadas).
+
+Os inputs são: lista de camadas
+de primitiva polígono e camada
+de molduras;
+
+O output deve ser uma camada
+de geometria linha no mesmo
+CRS da camada de moldura,
+com os locais com os possíveis
+erros de omissão.
